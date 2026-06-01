@@ -101,7 +101,7 @@ export default function VideoLibraryPage() {
       .order('updated_at', { ascending: false })
 
     const videoSteps = (data ?? []).filter(s => hasVideoContent(s.content))
-    setSteps(videoSteps as VideoStep[])
+    setSteps(videoSteps as unknown as VideoStep[])
     setLoading(false)
   }
 
