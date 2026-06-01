@@ -1,8 +1,5 @@
-// Node.js runtime — Netlify Lambda with extended timeout via netlify.toml
-export const runtime = 'nodejs'
 export const maxDuration = 30
 
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 
@@ -106,8 +103,6 @@ export async function POST(req: NextRequest) {
     console.error('Knowledge base error:', e.message)
   }
 
-  const client = new Anthropic()
-
   // Build final system prompt
   const fullSystem = BASE_PROMPT
     + (knowledgeSection || '')
@@ -116,23 +111,38 @@ export async function POST(req: NextRequest) {
   // Trim history to last N messages
   const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES)
 
-  // Non-streaming: buffered response works reliably on Netlify (edge + lambda)
-  const response = await client.messages.create({
-    model: 'claude-3-5-haiku-20241022',
-    max_tokens: 1024,
-    system: fullSystem,
-    messages: trimmedMessages,
+  // Raw fetch to Anthropic API — avoids SDK bundling issues on Netlify
+  const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 1024,
+      system: fullSystem,
+      messages: trimmedMessages,
+    }),
   })
 
-  const text = response.content
-    .filter(b => b.type === 'text')
-    .map(b => (b as any).text)
+  if (!anthropicRes.ok) {
+    const err = await anthropicRes.text()
+    console.error('Anthropic error:', anthropicRes.status, err)
+    return new Response(
+      JSON.stringify({ error: `AI error: ${anthropicRes.status}` }),
+      { status: 502, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const data = await anthropicRes.json()
+  const text = (data.content ?? [])
+    .filter((b: any) => b.type === 'text')
+    .map((b: any) => b.text)
     .join('')
 
   return new Response(text, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache',
-    },
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   })
 }
