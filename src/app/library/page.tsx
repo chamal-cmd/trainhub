@@ -35,7 +35,7 @@ export default async function LibraryPage() {
     return { subject, dueDate, readMins, percent, completed, total, status }
   }).sort((a, b) => {
     // in-progress first, then not-started, then done
-    const order = { 'in-progress': 0, 'not-started': 1, 'done': 2 }
+    const order: Record<string, number> = { 'in-progress': 0, 'not-started': 1, 'done': 2 }
     return order[a.status] - order[b.status]
   })
 

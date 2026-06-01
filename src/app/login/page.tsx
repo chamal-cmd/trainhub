@@ -100,7 +100,7 @@ function LoginPageInner() {
       if (event.data?.type === 'GOOGLE_SIGNIN_SUCCESS') {
         window.removeEventListener('message', onMessage)
         clearInterval(pollTimer)
-        popup.close()
+        popup?.close()
         router.push(event.data.role === 'admin' ? '/admin' : '/dashboard')
         router.refresh()
       }
