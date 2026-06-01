@@ -11,32 +11,25 @@ export default async function AdminDashboard() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Run all independent queries in parallel — profile, counts, and recent records
+  // Run all independent queries in parallel
   const [
     profileRes,
     { count: subjectsCount },
     { count: usersCount },
     { count: assignmentsCount },
-    { count: passedCount },
     recentSubjectsRes,
-    recentAttemptsRes,
   ] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user?.id ?? '').single(),
     supabase.from('subjects').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'user'),
     supabase.from('assignments').select('*', { count: 'exact', head: true }),
-    supabase.from('quiz_attempts').select('*', { count: 'exact', head: true }).eq('passed', true),
-    supabase
-      .from('subjects')
-      .select('id, title, emoji, cover_color, created_at')
-      .order('created_at', { ascending: false })
-      .limit(6),
-    supabase
-      .from('quiz_attempts')
-      .select('id, score, passed, completed_at, profiles(full_name), quizzes(title)')
-      .order('completed_at', { ascending: false })
-      .limit(8),
+    supabase.from('subjects').select('id, title, emoji, cover_color, created_at').order('created_at', { ascending: false }).limit(6),
   ])
+
+  // quiz_attempts fetched separately — table may not exist yet
+  const passedRes      = await supabase.from('quiz_attempts').select('*', { count: 'exact', head: true }).eq('passed', true).catch(() => ({ count: 0 }))
+  const recentAttemptsRes = await supabase.from('quiz_attempts').select('id, score, passed, completed_at, profiles(full_name), quizzes(title)').order('completed_at', { ascending: false }).limit(8).catch(() => ({ data: [] }))
+  const passedCount    = (passedRes as any).count ?? 0
 
   const profile       = profileRes.data
   const recentSubjects = recentSubjectsRes.data
