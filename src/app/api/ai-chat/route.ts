@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 
 const BASE_PROMPT = `You are a helpful, friendly AI assistant built into TrainHub — a training platform for a bookkeeping team at a company called GP (General Practice). Your role is to help team members quickly find information, understand their training materials, and get answers about their responsibilities and company policies.
 
@@ -26,14 +26,19 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Fetch knowledge base files to include as context
+  // Fetch knowledge base files using service role key (bypasses RLS — safe, server-only)
   let knowledgeSection = ''
   try {
-    const supabase = await createClient()
-    const { data: kbFiles } = await supabase
+    const admin = createSupabaseAdmin(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: kbFiles, error } = await admin
       .from('knowledge_files')
       .select('name, content')
       .order('created_at', { ascending: true })
+
+    if (error) console.error('Knowledge base fetch error:', error.message)
 
     if (kbFiles?.length) {
       knowledgeSection = '\n\n---\n## Company Knowledge Base\nThe following documents have been uploaded by your administrator. Use them to answer questions accurately:\n\n'
@@ -41,9 +46,10 @@ export async function POST(req: NextRequest) {
         knowledgeSection += `### ${f.name}\n${f.content}\n\n`
       }
       knowledgeSection += '---'
+      console.log(`Loaded ${kbFiles.length} knowledge base files into AI context`)
     }
-  } catch {
-    // Knowledge base fetch failed silently — AI still works without it
+  } catch (e: any) {
+    console.error('Knowledge base error:', e.message)
   }
 
   const client = new Anthropic()
