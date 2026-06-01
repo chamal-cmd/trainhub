@@ -1,3 +1,6 @@
+// Edge runtime: supports streaming + no 10s Lambda timeout on Netlify
+export const runtime = 'edge'
+
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
@@ -121,7 +124,7 @@ export async function POST(req: NextRequest) {
   const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES)
 
   const stream = await client.messages.stream({
-    model: 'claude-3-5-haiku-20241022',  // fast + cheap for knowledge-base Q&A
+    model: 'claude-haiku-4-5',  // fast + cheap for knowledge-base Q&A
     max_tokens: 1024,
     system: systemBlocks,
     messages: trimmedMessages,
