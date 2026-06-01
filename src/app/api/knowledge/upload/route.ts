@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createRequire } from 'module'
 
 export const runtime = 'nodejs'
+
+// createRequire fixes ESM/CJS interop for pdf-parse and mammoth
+const require = createRequire(import.meta.url)
 
 async function extractText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
@@ -12,16 +16,16 @@ async function extractText(file: File): Promise<string> {
     return buffer.toString('utf-8')
   }
 
-  // PDF — use pdf-parse
+  // PDF — use pdf-parse via createRequire (fixes ESM/CJS interop)
   if (ext === 'pdf') {
-    const pdfParse = (await import('pdf-parse')).default
+    const pdfParse = require('pdf-parse')
     const data = await pdfParse(buffer)
     return data.text
   }
 
-  // DOCX — use mammoth
+  // DOCX — use mammoth via createRequire
   if (ext === 'docx') {
-    const mammoth = await import('mammoth')
+    const mammoth = require('mammoth')
     const result  = await mammoth.extractRawText({ buffer })
     return result.value
   }
