@@ -113,7 +113,6 @@ export async function POST(req: NextRequest) {
     systemBlocks.push({
       type: 'text',
       text: knowledgeSection,
-      // @ts-expect-error cache_control is valid at runtime but not yet in all SDK type defs
       cache_control: { type: 'ephemeral' },
     })
   }
