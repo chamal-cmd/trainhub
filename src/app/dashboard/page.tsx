@@ -14,7 +14,7 @@ export default async function UserDashboard() {
   const supabase = await createClient()
 
   // Parallel fetch — uses cached getUser/getProfile so layout deduplicates
-  const [assignmentsRes, progressRes, profile, toolsRes] = await Promise.all([
+  const [assignmentsRes, progressRes, profile] = await Promise.all([
     supabase
       .from('assignments')
       .select('id, due_date, subjects(id, title, emoji, cover_color, topics(id, steps(id)))')
@@ -25,8 +25,15 @@ export default async function UserDashboard() {
       .eq('user_id', user.id)
       .order('completed_at', { ascending: false }),
     getProfile(user.id),
-    supabase.from('tools').select('id, name, emoji, category, website_url').order('name').limit(8),
   ])
+
+  // Tools fetched separately so a missing table never crashes the whole page
+  const toolsRes = await supabase
+    .from('tools')
+    .select('id, name, emoji, category, website_url')
+    .order('name')
+    .limit(8)
+    .catch(() => ({ data: [] }))
 
   const assignments   = assignmentsRes.data ?? []
   const stepProgress  = progressRes.data ?? []
