@@ -11,25 +11,27 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [profileRes, assignmentsRes, stepProgressRes] = await Promise.all([
-    supabase.from('profiles').select('full_name, email, role').eq('id', user.id).single(),
-    supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
-    supabase.from('step_progress').select('step_id').eq('user_id', user.id),
-  ])
+  let profile: any = null, completionRate = 0
+  const userEmail = user.email ?? ''
 
-  const profile = profileRes.data
-  const completedIds = new Set((stepProgressRes.data ?? []).map(p => p.step_id))
-
-  const allIds: string[] = (assignmentsRes.data ?? []).flatMap((a: any) =>
-    (a.subjects as any)?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
-  )
-  const completionRate = allIds.length > 0
-    ? Math.round((allIds.filter(id => completedIds.has(id)).length / allIds.length) * 100)
-    : 0
+  try {
+    const [profileRes, assignmentsRes, stepProgressRes] = await Promise.all([
+      supabase.from('profiles').select('full_name, email, role').eq('id', user.id).single(),
+      supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
+      supabase.from('step_progress').select('step_id').eq('user_id', user.id),
+    ])
+    profile = profileRes.data
+    const completedIds = new Set((stepProgressRes.data ?? []).map((p: any) => p.step_id))
+    const allIds: string[] = (assignmentsRes.data ?? []).flatMap((a: any) =>
+      (a.subjects as any)?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
+    )
+    completionRate = allIds.length > 0
+      ? Math.round((allIds.filter(id => completedIds.has(id)).length / allIds.length) * 100)
+      : 0
+  } catch { /* fail silently */ }
 
   const userName = profile?.full_name ?? 'User'
   const userRole = profile?.role === 'admin' ? 'Administrator' : 'Bookkeeper'
-  const userEmail = user.email ?? profile?.email ?? ''
 
   return (
     <UserClientWrapper userName={userName} userRole={userRole} completionRate={completionRate}>
