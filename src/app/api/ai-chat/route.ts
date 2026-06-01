@@ -10,11 +10,50 @@ Key facts about this platform:
 - Users can track their completion progress and are assigned modules by their administrator
 - Software tools used include: Xero, Dext Prepare, Fathom, Asana, Slack, Microsoft 365, Hiver, Hubdoc, Google Workspace, QuickBooks
 
-When answering:
+When answering any question, follow these steps in order:
+1. **Read the knowledge base documents first** — before forming any answer, scan every document in the Company Knowledge Base section below for relevant information
+2. **Base your answer on those documents** — if the documents contain relevant content, quote or summarise directly from them and cite the document name (e.g. "According to [Document Name]...")
+3. **Only go beyond the documents** if the question is not covered at all — in that case, use your general knowledge and note that the answer is not in the uploaded documents
+4. If a question is about policies, procedures, or workflows and the documents don't cover it, tell the user which document would be the right place to look, or suggest they ask their team lead or administrator
+
+General guidelines:
 - Be concise and direct — one to three short paragraphs at most
-- If a question is answered by the knowledge base documents below, use that information
-- If asked about policies or procedures not in the documents, suggest they check with their team lead or administrator
-- Use a warm, professional tone — you're a knowledgeable colleague, not a formal helpdesk`
+- Use a warm, professional tone — you're a knowledgeable colleague, not a formal helpdesk
+- Never fabricate policies or procedures — only state what is in the documents or is general knowledge`
+
+const MAX_FILE_CHARS = 8_000
+const MAX_HISTORY_MESSAGES = 10
+const MAX_KB_FILES = 4 // max files to include even if many match
+
+// Score a KB file against the user's query using word overlap
+function scoreFile(query: string, name: string, content: string): number {
+  const words = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2) // ignore short stop words
+
+  const haystack = (name + ' ' + content).toLowerCase()
+  return words.reduce((score, word) => {
+    // name matches count more than body matches
+    if (name.toLowerCase().includes(word)) return score + 3
+    if (haystack.includes(word)) return score + 1
+    return score
+  }, 0)
+}
+
+function selectRelevantFiles(
+  files: { name: string; content: string }[],
+  query: string,
+): { name: string; content: string }[] {
+  const scored = files
+    .map(f => ({ f, score: scoreFile(query, f.name, f.content) }))
+    .sort((a, b) => b.score - a.score)
+
+  // Always include files that scored > 0; fall back to top MAX_KB_FILES if nothing matched
+  const matched = scored.filter(x => x.score > 0).slice(0, MAX_KB_FILES)
+  return (matched.length > 0 ? matched : scored.slice(0, MAX_KB_FILES)).map(x => x.f)
+}
 
 export async function POST(req: NextRequest) {
   const { messages, userContext } = await req.json()
@@ -26,7 +65,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Fetch knowledge base files using service role key (bypasses RLS — safe, server-only)
+  // Fetch knowledge base files
   let knowledgeSection = ''
   try {
     const admin = createSupabaseAdmin(
@@ -41,12 +80,20 @@ export async function POST(req: NextRequest) {
     if (error) console.error('Knowledge base fetch error:', error.message)
 
     if (kbFiles?.length) {
-      knowledgeSection = '\n\n---\n## Company Knowledge Base\nThe following documents have been uploaded by your administrator. Use them to answer questions accurately:\n\n'
-      for (const f of kbFiles) {
-        knowledgeSection += `### ${f.name}\n${f.content}\n\n`
+      // Extract the latest user query for word matching
+      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')?.content ?? ''
+      const relevant = selectRelevantFiles(kbFiles, lastUserMsg)
+
+      console.log(`KB: ${kbFiles.length} total files, ${relevant.length} matched for query: "${lastUserMsg.slice(0, 60)}"`)
+
+      knowledgeSection = '\n\n---\n## Company Knowledge Base\nThe following documents are relevant to this question. Use them to answer accurately:\n\n'
+      for (const f of relevant) {
+        const content = f.content.length > MAX_FILE_CHARS
+          ? f.content.slice(0, MAX_FILE_CHARS) + '\n[...truncated]'
+          : f.content
+        knowledgeSection += `### ${f.name}\n${content}\n\n`
       }
       knowledgeSection += '---'
-      console.log(`Loaded ${kbFiles.length} knowledge base files into AI context`)
     }
   } catch (e: any) {
     console.error('Knowledge base error:', e.message)
@@ -54,18 +101,31 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic()
 
-  const SYSTEM_PROMPT = BASE_PROMPT + knowledgeSection
+  // System prompt as array of blocks so we can cache the expensive KB section
+  const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
+    {
+      type: 'text',
+      text: BASE_PROMPT + (userContext ? `\n\nContext about the current user: ${userContext}` : ''),
+    },
+  ]
 
-  // Append user context to system prompt if provided
-  const systemWithContext = userContext
-    ? `${SYSTEM_PROMPT}\n\nContext about the current user: ${userContext}`
-    : SYSTEM_PROMPT
+  if (knowledgeSection) {
+    systemBlocks.push({
+      type: 'text',
+      text: knowledgeSection,
+      // @ts-expect-error cache_control is valid at runtime but not yet in all SDK type defs
+      cache_control: { type: 'ephemeral' },
+    })
+  }
+
+  // Trim history to last N messages to avoid unbounded token growth
+  const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES)
 
   const stream = await client.messages.stream({
-    model: 'claude-opus-4-5',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
-    system: systemWithContext,
-    messages,
+    system: systemBlocks,
+    messages: trimmedMessages,
   })
 
   const encoder = new TextEncoder()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, SquarePen, Clock, Send, Sparkles, RotateCcw } from 'lucide-react'
+import { X, SquarePen, Clock, Send, Sparkles, RotateCcw, Square } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { processQuery, type AiContext } from '@/lib/ai-engine'
 
@@ -62,8 +62,9 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
   const [aiCtx,        setAiCtx]        = useState<AiContext | null>(null)
   const [ctxLoading,   setCtxLoading]   = useState(false)
 
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
+  const bottomRef  = useRef<HTMLDivElement>(null)
+  const inputRef   = useRef<HTMLTextAreaElement>(null)
+  const abortRef   = useRef<AbortController | null>(null)
 
   // ── Fetch context from Supabase when panel first opens ─────────────────────
 
@@ -135,38 +136,65 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
 
   // ── Send message ───────────────────────────────────────────────────────────
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || loading) return
 
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: trimmed }
-    setMessages(prev => [...prev, userMsg])
+    const updatedMessages = [...messages, userMsg]
+    setMessages(updatedMessages)
     setInput('')
     setLoading(true)
 
-    // Get AI response from rule engine
-    const ctx = aiCtx ?? {
-      userName, completionRate, userRole: 'Bookkeeper', modules: [], tools: [],
-    }
-    const responseText = processQuery(trimmed, ctx)
-
-    // Stream the response word-by-word
     const assistantId = crypto.randomUUID()
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', streaming: true }])
 
-    streamText(
-      responseText,
-      (partial) => setMessages(prev => prev.map(m =>
-        m.id === assistantId ? { ...m, content: partial } : m
-      )),
-      () => {
+    const abort = new AbortController()
+    abortRef.current = abort
+
+    try {
+      const ctx = aiCtx ?? { userName, completionRate, userRole: 'Bookkeeper', modules: [], tools: [] }
+      const userContext = `Name: ${ctx.userName}, Role: ${ctx.userRole}, Overall completion: ${ctx.completionRate}%, Modules: ${ctx.modules.map(m => `${m.title} (${m.percent}%)`).join(', ') || 'none'}`
+
+      const res = await fetch('/api/ai-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          userContext,
+        }),
+        signal: abort.signal,
+      })
+
+      if (!res.ok || !res.body) throw new Error('AI request failed')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
         setMessages(prev => prev.map(m =>
-          m.id === assistantId ? { ...m, streaming: false } : m
+          m.id === assistantId ? { ...m, content: accumulated } : m
         ))
-        setLoading(false)
-      },
-    )
-  }, [loading, aiCtx, userName, completionRate])
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('[AI Panel] fetch error:', err)
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId ? { ...m, content: 'Sorry, I had trouble connecting. Please try again.' } : m
+        ))
+      }
+    } finally {
+      abortRef.current = null
+      setMessages(prev => prev.map(m =>
+        m.id === assistantId ? { ...m, streaming: false } : m
+      ))
+      setLoading(false)
+    }
+  }, [loading, messages, aiCtx, userName, completionRate])
 
   // Listen for query from the AI launch card on the dashboard
   // (must be placed AFTER sendMessage is defined to avoid TDZ error)
@@ -350,13 +378,23 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
                   disabled={loading}
                   className="w-full bg-transparent px-4 pt-3 pb-10 text-sm text-slate-800 placeholder:text-slate-400 resize-none focus:outline-none disabled:opacity-50"
                 />
-                <button
-                  onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || loading}
-                  className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:bg-indigo-600 enabled:hover:bg-indigo-700 enabled:shadow-sm bg-slate-300"
-                >
-                  <Send className="w-3.5 h-3.5 text-white" />
-                </button>
+                {loading ? (
+                  <button
+                    onClick={() => abortRef.current?.abort()}
+                    title="Cancel"
+                    className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center bg-red-500 hover:bg-red-600 shadow-sm transition-all"
+                  >
+                    <Square className="w-3 h-3 text-white fill-white" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => sendMessage(input)}
+                    disabled={!input.trim()}
+                    className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:bg-indigo-600 enabled:hover:bg-indigo-700 enabled:shadow-sm bg-slate-300"
+                  >
+                    <Send className="w-3.5 h-3.5 text-white" />
+                  </button>
+                )}
               </div>
               <p className="text-center text-[11px] text-slate-400 mt-2">
                 Press{' '}
