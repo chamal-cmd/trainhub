@@ -104,29 +104,18 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic()
 
-  // System prompt as array of blocks so we can cache the expensive KB section
-  const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
-    {
-      type: 'text',
-      text: BASE_PROMPT + (userContext ? `\n\nContext about the current user: ${userContext}` : ''),
-    },
-  ]
-
-  if (knowledgeSection) {
-    systemBlocks.push({
-      type: 'text',
-      text: knowledgeSection,
-      cache_control: { type: 'ephemeral' },
-    })
-  }
+  // Build final system prompt (single string — most compatible with edge runtime)
+  const fullSystem = BASE_PROMPT
+    + (knowledgeSection || '')
+    + (userContext ? `\n\nContext about the current user: ${userContext}` : '')
 
   // Trim history to last N messages to avoid unbounded token growth
   const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES)
 
   const stream = await client.messages.stream({
-    model: 'claude-haiku-4-5',  // fast + cheap for knowledge-base Q&A
+    model: 'claude-3-5-haiku-20241022',  // confirmed valid model — fast + cheap
     max_tokens: 1024,
-    system: systemBlocks,
+    system: fullSystem,
     messages: trimmedMessages,
   })
 
