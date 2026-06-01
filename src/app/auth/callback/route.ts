@@ -41,6 +41,12 @@ export async function GET(request: NextRequest) {
         const role        = profile?.role ?? 'user'
         const destination = role === 'admin' ? '/admin' : '/dashboard'
         const isPopup     = searchParams.get('popup') === '1'
+        const type        = searchParams.get('type')
+
+        // Password recovery — send to reset page so they can set a new password
+        if (type === 'recovery') {
+          return NextResponse.redirect(new URL('/auth/reset-password', origin))
+        }
 
         if (isPopup) {
           // Popup flow: redirect to a tiny client page that signals the opener
