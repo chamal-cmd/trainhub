@@ -104,41 +104,30 @@ export async function POST(req: NextRequest) {
 
   const client = new Anthropic()
 
-  // Build final system prompt (single string — most compatible with edge runtime)
+  // Build final system prompt
   const fullSystem = BASE_PROMPT
     + (knowledgeSection || '')
     + (userContext ? `\n\nContext about the current user: ${userContext}` : '')
 
-  // Trim history to last N messages to avoid unbounded token growth
+  // Trim history to last N messages
   const trimmedMessages = messages.slice(-MAX_HISTORY_MESSAGES)
 
-  const stream = await client.messages.stream({
-    model: 'claude-3-5-haiku-20241022',  // confirmed valid model — fast + cheap
+  // Non-streaming: buffered response works reliably on Netlify (edge + lambda)
+  const response = await client.messages.create({
+    model: 'claude-3-5-haiku-20241022',
     max_tokens: 1024,
     system: fullSystem,
     messages: trimmedMessages,
   })
 
-  const encoder = new TextEncoder()
+  const text = response.content
+    .filter(b => b.type === 'text')
+    .map(b => (b as any).text)
+    .join('')
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of stream) {
-        if (
-          chunk.type === 'content_block_delta' &&
-          chunk.delta.type === 'text_delta'
-        ) {
-          controller.enqueue(encoder.encode(chunk.delta.text))
-        }
-      }
-      controller.close()
-    },
-  })
-
-  return new Response(readable, {
+  return new Response(text, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Transfer-Encoding': 'chunked',
       'Cache-Control': 'no-cache',
     },
   })
