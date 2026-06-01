@@ -1,46 +1,41 @@
-# Aircall Call Reports Dashboard
+# TrainHub — GP Bookkeeper Training Platform
 
-An AI-powered call reporting dashboard that pulls live data from Aircall and uses Claude to analyze calls.
-
-## Features
-- Live call data from Aircall API
-- KPI cards: Total Calls, Avg Duration, Positive Sentiment %, Follow-ups
-- Sentiment breakdown donut chart + Call outcomes bar chart
-- Sortable, filterable, searchable calls table
-- Expandable rows showing topics and action items
-- Click any call → detail panel with AI summary
-- "Re-analyze with Claude" — streams live AI analysis via Anthropic API
-- Export filtered data as CSV
-
-## Setup
-
-### 1. Configure Aircall credentials
-Open `server.js` and set:
-```
-const AIRCALL_API_ID    = 'your_api_id';
-const AIRCALL_API_TOKEN = 'your_api_token';
-```
-
-### 2. Start the server
-```bash
-node server.js
-```
-Then open http://localhost:4001
-
-### 3. Anthropic API key
-Click the ⚙ gear icon in the dashboard header and enter your Anthropic API key to enable Claude re-analysis.
-
-## File Structure
-```
-├── server.js        Node.js proxy server (Aircall API + static files)
-├── public/
-│   ├── index.html   Dashboard HTML
-│   ├── app.js       Dashboard JavaScript
-│   └── app.css      Custom styles
-└── package.json
-```
+An internal training platform built for the GP Bookkeeper team (~30 members across 3 pods).
 
 ## Tech Stack
-- **Frontend**: Tailwind CSS (CDN), Chart.js (CDN), Vanilla JS
-- **Backend**: Node.js (no dependencies — built-in modules only)
-- **APIs**: Aircall v1, Anthropic Claude API
+
+- **Framework**: Next.js 16 (App Router) + TypeScript
+- **Auth & Database**: Supabase (PostgreSQL + Auth)
+- **Editor**: TipTap rich text with inline video embeds (Loom, YouTube, Tango, Scribe, Google Drive)
+- **AI Assistant**: Anthropic Claude with Knowledge Base context injection
+- **Deployment**: Netlify
+
+## Features
+
+- Training Library — modules → topics → steps
+- Rich text editor with inline image & video embedding
+- Quiz builder with pass/fail grading
+- Per-module access control (Manage Access)
+- Knowledge Base — admin uploads SOPs/guides used as AI context
+- AI Assistant (Ctrl+K) — answers questions using uploaded documents
+- User progress tracking & completion rates
+- Admin/User view toggle
+- Google OAuth login
+
+## Environment Variables
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ANTHROPIC_API_KEY=
+```
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000
