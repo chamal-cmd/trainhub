@@ -29,7 +29,7 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'Content',
     items: [
-      { href: '/admin/subjects',        label: 'Training Library', icon: BookOpen },
+      { href: '/admin/subjects',       label: 'Training Library', icon: BookOpen },
       { href: '/admin/knowledge-base', label: 'Knowledge Base',   icon: Brain },
       { href: '/admin/quizzes',        label: 'Quizzes',          icon: HelpCircle },
     ],
@@ -45,6 +45,12 @@ const navSections: { label: string; items: NavItem[] }[] = [
     label: 'Analytics',
     items: [
       { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Switch View',
+    items: [
+      { href: '/dashboard', label: 'User View', icon: Eye },
     ],
   },
 ]
@@ -152,17 +158,6 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
           <span className="flex-1">AI Assistant</span>
           <span className="text-[9px] font-bold bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded-full">⌘K</span>
         </button>
-
-        {/* View toggle */}
-        <Link
-          href="/dashboard"
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-cyan-300/80 hover:bg-cyan-500/10 hover:text-cyan-200 transition-all mb-0.5"
-          title="Switch to user view"
-        >
-          <Eye className="w-4 h-4 shrink-0" />
-          <span className="flex-1">User View</span>
-          <span className="text-[9px] font-semibold bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded-full">preview</span>
-        </Link>
 
         <button
           onClick={handleLogout}
