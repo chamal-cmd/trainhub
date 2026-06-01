@@ -23,7 +23,6 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     assignmentRes,
     subjectRes,
     stepProgressRes,
-    quizAttemptsRes,
     allAssignmentsRes,
   ] = await Promise.all([
     supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
@@ -34,9 +33,11 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
       .eq('id', subjectId)
       .single(),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
-    supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id),
     supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
   ])
+
+  // quiz_attempts fetched separately — table may not exist yet
+  const quizAttemptsRes = await supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id).catch(() => ({ data: [] }))
 
   const profile    = profileRes.data
   const assignment = assignmentRes.data
