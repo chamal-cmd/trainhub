@@ -83,7 +83,31 @@ CREATE TABLE IF NOT EXISTS steps (
 );
 
 -- =============================================
--- 5. QUIZZES
+-- 5. KNOWLEDGE BASE (AI context files)
+-- =============================================
+CREATE TABLE IF NOT EXISTS knowledge_files (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name       TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  file_type  TEXT NOT NULL,
+  size_bytes INTEGER DEFAULT 0,
+  char_count INTEGER DEFAULT 0,
+  uploaded_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Admins can manage; authenticated users can read (for AI context)
+ALTER TABLE knowledge_files ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins manage knowledge files" ON knowledge_files
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+CREATE POLICY "Users can read knowledge files" ON knowledge_files
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- =============================================
+-- 6. QUIZZES
 -- =============================================
 CREATE TABLE IF NOT EXISTS quizzes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

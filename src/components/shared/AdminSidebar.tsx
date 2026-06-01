@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils'
 import React from 'react'
 import {
   LayoutDashboard, BookOpen, Users, ClipboardList,
-  BarChart3, LogOut, GraduationCap, HelpCircle, Eye, Film,
+  BarChart3, LogOut, GraduationCap, HelpCircle, Eye, Brain, Sparkles,
 } from 'lucide-react'
+import { useState } from 'react'
+import { AiAssistantPanel } from './AiAssistantPanel'
 
 interface NavItem {
   href: string
@@ -27,8 +29,8 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'Content',
     items: [
-      { href: '/admin/subjects',       label: 'Training Library', icon: BookOpen },
-      { href: '/admin/video-library', label: 'Video Library',    icon: Film },
+      { href: '/admin/subjects',        label: 'Training Library', icon: BookOpen },
+      { href: '/admin/knowledge-base', label: 'Knowledge Base',   icon: Brain },
       { href: '/admin/quizzes',        label: 'Quizzes',          icon: HelpCircle },
     ],
   },
@@ -55,6 +57,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [aiOpen, setAiOpen] = useState(false)
 
   async function handleLogout() {
     const supabase = createClient()
@@ -69,6 +72,7 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   }
 
   return (
+    <>
     <aside className="w-[220px] min-h-screen bg-[#1E1B4B] flex flex-col shrink-0 select-none">
       {/* Logo */}
       <div className="px-5 h-16 flex items-center border-b border-white/[0.07]">
@@ -134,6 +138,21 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
           </div>
         )}
 
+        {/* AI Assistant */}
+        <button
+          onClick={() => setAiOpen(v => !v)}
+          className={`flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5 ${
+            aiOpen
+              ? 'bg-gradient-to-r from-purple-600/40 to-indigo-600/40 text-white'
+              : 'text-indigo-300/70 hover:bg-white/[0.07] hover:text-white'
+          }`}
+          title="AI Assistant (Ctrl+K)"
+        >
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span className="flex-1">AI Assistant</span>
+          <span className="text-[9px] font-bold bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded-full">⌘K</span>
+        </button>
+
         {/* View toggle */}
         <Link
           href="/dashboard"
@@ -154,5 +173,14 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
         </button>
       </div>
     </aside>
+
+    {/* AI Assistant Panel — rendered outside sidebar so it can overlay the full page */}
+    <AiAssistantPanel
+      open={aiOpen}
+      onClose={() => setAiOpen(false)}
+      userName={userName ?? 'Admin'}
+      completionRate={0}
+    />
+  </>
   )
 }
