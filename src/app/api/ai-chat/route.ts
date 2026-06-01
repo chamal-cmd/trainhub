@@ -1,5 +1,6 @@
-// Edge runtime: supports streaming + no 10s Lambda timeout on Netlify
-export const runtime = 'edge'
+// Node.js runtime — Netlify Lambda with extended timeout via netlify.toml
+export const runtime = 'nodejs'
+export const maxDuration = 30
 
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
@@ -68,17 +69,20 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Fetch knowledge base files
+  // Fetch knowledge base files — 5s timeout so it never blocks the AI response
   let knowledgeSection = ''
   try {
     const admin = createSupabaseAdmin(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    const { data: kbFiles, error } = await admin
+    const kbPromise = admin
       .from('knowledge_files')
       .select('name, content')
       .order('created_at', { ascending: true })
+    const timeout  = new Promise<null>(r => setTimeout(() => r(null), 5000))
+    const result   = await Promise.race([kbPromise, timeout])
+    const { data: kbFiles, error } = (result as any) ?? { data: null, error: null }
 
     if (error) console.error('Knowledge base fetch error:', error.message)
 
