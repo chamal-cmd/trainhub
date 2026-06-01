@@ -1,37 +1,9 @@
+export const runtime = 'edge'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createRequire } from 'module'
 
-export const runtime = 'nodejs'
-
-// createRequire fixes ESM/CJS interop for pdf-parse and mammoth
-const require = createRequire(import.meta.url)
-
-async function extractText(file: File): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const ext    = file.name.split('.').pop()?.toLowerCase() ?? ''
-
-  // Plain text formats — read directly
-  if (['txt', 'md', 'csv', 'json', 'sql', 'ts', 'tsx', 'js'].includes(ext)) {
-    return buffer.toString('utf-8')
-  }
-
-  // PDF — use pdf-parse via createRequire (fixes ESM/CJS interop)
-  if (ext === 'pdf') {
-    const pdfParse = require('pdf-parse')
-    const data = await pdfParse(buffer)
-    return data.text
-  }
-
-  // DOCX — use mammoth via createRequire
-  if (ext === 'docx') {
-    const mammoth = require('mammoth')
-    const result  = await mammoth.extractRawText({ buffer })
-    return result.value
-  }
-
-  throw new Error(`Unsupported file type: .${ext}`)
-}
+const TEXT_TYPES = ['txt', 'md', 'csv', 'json', 'sql', 'ts', 'tsx', 'js', 'jsx']
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,17 +13,19 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
     const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-    if (!['txt', 'md', 'csv', 'json', 'pdf', 'docx', 'sql'].includes(ext)) {
-      return NextResponse.json({ error: `File type .${ext} not supported` }, { status: 400 })
+
+    if (!TEXT_TYPES.includes(ext)) {
+      return NextResponse.json({
+        error: `PDF and DOCX parsing is not supported on Cloudflare. Please paste text directly using the "Paste Text" button, or convert your file to .txt first.`
+      }, { status: 400 })
     }
 
-    // Extract text
-    const content = await extractText(file)
+    const content = await file.text()
+
     if (!content.trim()) {
-      return NextResponse.json({ error: 'Could not extract text from this file' }, { status: 400 })
+      return NextResponse.json({ error: 'File is empty or unreadable' }, { status: 400 })
     }
 
-    // Store in DB
     const supabase = await createClient()
     const { error } = await supabase.from('knowledge_files').insert({
       name:       file.name,
@@ -63,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ ok: true, chars: content.length })
+    return NextResponse.json({ ok: true, chars: content.trim().length })
   } catch (err: any) {
     console.error('Knowledge upload error:', err)
     return NextResponse.json({ error: err.message ?? 'Upload failed' }, { status: 500 })

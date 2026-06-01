@@ -1,3 +1,4 @@
+export const runtime = 'edge'
 export const maxDuration = 30
 
 import { NextRequest } from 'next/server'
