@@ -22,9 +22,9 @@ General guidelines:
 - Use a warm, professional tone — you're a knowledgeable colleague, not a formal helpdesk
 - Never fabricate policies or procedures — only state what is in the documents or is general knowledge`
 
-const MAX_FILE_CHARS = 8_000
-const MAX_HISTORY_MESSAGES = 10
-const MAX_KB_FILES = 4 // max files to include even if many match
+const MAX_FILE_CHARS = 2_000  // keep context small so Netlify gateway doesn't timeout
+const MAX_HISTORY_MESSAGES = 6
+const MAX_KB_FILES = 2        // top 2 most relevant files only
 
 // Score a KB file against the user's query using word overlap
 function scoreFile(query: string, name: string, content: string): number {
