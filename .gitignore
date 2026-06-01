@@ -43,3 +43,20 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Non-TrainHub / one-time scripts
+public/app.js
+public/app.css
+public/index.html
+call-reports.html
+render.yaml
+PROJECT_INSTRUCTIONS.md
+scripts/scrape-trainual.js
+scripts/trainual-data.json
+scripts/trainual-debug.html
+scripts/trainual-import.sql
+scripts/nav-login.js
+scripts/github-push.mjs
+scripts/upload-kb.mjs
+scripts/upload-pdfs.mjs
+scripts/run-seed-team-training.mjs
