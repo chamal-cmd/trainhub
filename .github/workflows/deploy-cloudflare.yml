@@ -23,16 +23,17 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Build for Cloudflare Pages
-        run: npx @cloudflare/next-on-pages@1
+        run: npx @opennextjs/cloudflare@latest build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NODE_VERSION: "20"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 6dc61160e2401e7202a2260f7f8b40ad
-          command: pages deploy .vercel/output/static --project-name=trainhub --branch=master
+          command: pages deploy .open-next/assets --project-name=trainhub --branch=master --commit-dirty=true

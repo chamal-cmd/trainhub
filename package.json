@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cf": "npx @cloudflare/next-on-pages@1",
+    "build:cf": "npx @opennextjs/cloudflare@latest build",
     "preview": "wrangler pages dev",
     "start": "next start",
     "lint": "next lint"
@@ -62,6 +62,7 @@
   "devDependencies": {
     "@cloudflare/next-on-pages": "^1.13.16",
     "@netlify/plugin-nextjs": "^4.41.6",
+    "@opennextjs/cloudflare": "^1.19.11",
     "playwright": "^1.60.0",
     "tweetsodium": "^0.0.4",
     "wrangler": "^4.96.0"
