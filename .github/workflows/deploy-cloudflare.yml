@@ -19,16 +19,20 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install project dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Install Cloudflare build tool
+        run: npm install -D @opennextjs/cloudflare@latest --legacy-peer-deps
+
       - name: Build for Cloudflare Pages
-        run: npx @opennextjs/cloudflare@latest build
+        run: npx @opennextjs/cloudflare build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NEXT_PUBLIC_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NODE_VERSION: "20"
 
       - name: Deploy to Cloudflare Pages
