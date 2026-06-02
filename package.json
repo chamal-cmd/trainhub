@@ -58,7 +58,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^4.41.6",
+    "@netlify/plugin-nextjs": "^5.15.11",
     "playwright": "^1.60.0",
     "tweetsodium": "^0.0.4"
   }
