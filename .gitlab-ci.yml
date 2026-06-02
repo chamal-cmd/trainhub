@@ -1,8 +1,0 @@
-mirror-to-github:
-  stage: deploy
-  image: alpine/git
-  only:
-    - master
-  script:
-    - git remote add github https://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@github.com/chamal-cmd/trainhub.git || true
-    - git push github HEAD:main --force
