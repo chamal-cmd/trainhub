@@ -12,11 +12,14 @@ import {
 } from '@/components/ui/dialog'
 import type { Profile } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, Search, Users, Mail, Shield, User } from 'lucide-react'
+import { Plus, Search, Users, Mail, Shield, User, Clock, X, Loader2 } from 'lucide-react'
+
+type PendingInvite = { id: string; email: string; full_name: string; role: 'user'|'admin'; invited_at: string }
 
 export default function UsersPage() {
   const supabase = createClient()
   const [users, setUsers] = useState<Profile[]>([])
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
@@ -27,13 +30,36 @@ export default function UsersPage() {
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [inviteSuccess, setInviteSuccess] = useState<{email: string; role: 'user'|'admin'} | null>(null)
+  const [revoking, setRevoking] = useState<string | null>(null)
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => { loadUsers(); loadPending() }, [])
 
   async function loadUsers() {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
     if (data) setUsers(data)
     setLoading(false)
+  }
+
+  async function loadPending() {
+    const res = await fetch('/api/admin/revoke-invite')
+    if (res.ok) {
+      const json = await res.json()
+      setPendingInvites(json.pending ?? [])
+    }
+  }
+
+  async function revokeInvite(invite: PendingInvite) {
+    if (!confirm(`Revoke invite for ${invite.email}? They won't be able to use the invite link.`)) return
+    setRevoking(invite.id)
+    const res = await fetch('/api/admin/revoke-invite', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: invite.id }),
+    })
+    const json = await res.json()
+    if (!res.ok) { alert(json.error); setRevoking(null); return }
+    setPendingInvites(prev => prev.filter(p => p.id !== invite.id))
+    setRevoking(null)
   }
 
   async function handleInvite(e: React.FormEvent) {
@@ -61,7 +87,7 @@ export default function UsersPage() {
 
     const sentTo = inviteEmail
     const sentRole = inviteRole
-    await loadUsers()
+    await Promise.all([loadUsers(), loadPending()])
     setShowInvite(false)
     setInviteEmail('')
     setInviteName('')
@@ -107,6 +133,48 @@ export default function UsersPage() {
         </div>
       ) : (
         <div className="space-y-6">
+
+          {/* ── Pending Invites ── */}
+          {pendingInvites.length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-amber-600">Pending Invites ({pendingInvites.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {pendingInvites.map(invite => (
+                  <div key={invite.id} className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-100 rounded-xl">
+                    <div className="w-9 h-9 rounded-full bg-amber-200 flex items-center justify-center text-amber-700 text-xs font-bold shrink-0">
+                      {invite.full_name?.split(' ').map((n:string) => n[0]).join('').toUpperCase().slice(0,2) || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{invite.full_name}</p>
+                      <p className="text-xs text-slate-500 truncate">{invite.email}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                      invite.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {invite.role === 'admin' ? '🛡️ Admin' : '👤 Member'}
+                    </span>
+                    <span className="text-[10px] text-amber-600 font-medium bg-amber-100 px-2 py-0.5 rounded-full shrink-0">
+                      Awaiting
+                    </span>
+                    <button
+                      onClick={() => revokeInvite(invite)}
+                      disabled={revoking === invite.id}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 shrink-0"
+                      title="Revoke invite"
+                    >
+                      {revoking === invite.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <X className="w-4 h-4" />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {admins.length > 0 && (
             <div>
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
