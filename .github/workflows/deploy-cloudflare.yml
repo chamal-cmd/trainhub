@@ -22,8 +22,8 @@ jobs:
       - name: Install project dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Install Cloudflare build tool
-        run: npm install -D @opennextjs/cloudflare@latest --legacy-peer-deps
+      - name: Install Cloudflare build tools
+        run: npm install -D @opennextjs/cloudflare@latest wrangler@latest --legacy-peer-deps
 
       - name: Build for Cloudflare Pages
         run: npx @opennextjs/cloudflare build
