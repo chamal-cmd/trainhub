@@ -43,9 +43,14 @@ export async function GET(request: NextRequest) {
         const isPopup     = searchParams.get('popup') === '1'
         const type        = searchParams.get('type')
 
-        // Password recovery — send to reset page so they can set a new password
+        // Password recovery — send to reset page
         if (type === 'recovery') {
           return NextResponse.redirect(new URL('/auth/reset-password', origin))
+        }
+
+        // Invite acceptance — send to welcome/setup page
+        if (type === 'invite') {
+          return NextResponse.redirect(new URL(`/auth/welcome?role=${role}`, origin))
         }
 
         if (isPopup) {
