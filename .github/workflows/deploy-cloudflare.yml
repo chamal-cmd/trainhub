@@ -35,9 +35,9 @@ jobs:
           NEXT_PUBLIC_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NODE_VERSION: "20"
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 6dc61160e2401e7202a2260f7f8b40ad
-          command: pages deploy .open-next/assets --project-name=trainhub --branch=master --commit-dirty=true
+          command: deploy --env production
