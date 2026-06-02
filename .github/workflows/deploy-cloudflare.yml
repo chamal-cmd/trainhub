@@ -40,4 +40,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 6dc61160e2401e7202a2260f7f8b40ad
-          command: deploy --env production
+          command: deploy
