@@ -13,6 +13,7 @@ interface Props {
   userName: string
   userEmail: string
   userRole: string
+  initialTab?: Tab
 }
 
 type Tab   = 'profile' | 'notifications' | 'security' | 'account'
@@ -136,8 +137,8 @@ function applyTheme(t: Theme) {
 }
 
 // ── Root component ─────────────────────────────────────────────────────────────
-export function SettingsClient({ userId, userName, userEmail, userRole }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('profile')
+export function SettingsClient({ userId, userName, userEmail, userRole, initialTab }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'profile')
 
   return (
     <div className="flex h-full bg-[#f8f8f8]">
@@ -199,13 +200,36 @@ function SectionCard({ title, description, children }: {
 
 // ── Profile section ───────────────────────────────────────────────────────────
 function ProfileSection({ userId, userName, userEmail, userRole }: Props) {
-  const [name, setName]     = useState(userName)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
-  const [error, setError]   = useState('')
+  const [name,      setName]      = useState(userName)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [saving,    setSaving]    = useState(false)
+  const [saved,     setSaved]     = useState(false)
+  const [error,     setError]     = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const initials = name.split(' ').map(n => n[0] ?? '').join('').toUpperCase().slice(0, 2)
+  const initials = name.split(' ').map((n: string) => n[0] ?? '').join('').toUpperCase().slice(0, 2)
+
+  // Load avatar on mount
+  useEffect(() => {
+    createClient().from('profiles').select('avatar_url').eq('id', userId).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url) })
+  }, [userId])
+
+  async function handleAvatarUpload(file: File) {
+    if (file.size > 2 * 1024 * 1024) { setError('Image must be under 2MB'); return }
+    setUploading(true); setError('')
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const path = `${userId}/avatar.${ext}`
+    const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+    if (uploadErr) { setError(uploadErr.message); setUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', userId)
+    setAvatarUrl(publicUrl + '?t=' + Date.now())
+    setUploading(false)
+    setSaved(true); setTimeout(() => setSaved(false), 3000)
+  }
 
   async function handleSave() {
     if (!name.trim()) { setError('Full name is required'); return }
@@ -226,21 +250,28 @@ function ProfileSection({ userId, userName, userEmail, userRole }: Props) {
       <SectionCard title="Profile photo" description="This will be displayed across the platform.">
         <div className="flex items-center gap-5">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold select-none">
-              {initials}
-            </div>
-            <button onClick={() => fileRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border-2 border-white rounded-full shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors">
-              <Camera className="w-3.5 h-3.5 text-slate-600" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={name} className="w-20 h-20 rounded-full object-cover" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold select-none">
+                {initials}
+              </div>
+            )}
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border-2 border-white rounded-full shadow-md flex items-center justify-center hover:bg-slate-50 transition-colors disabled:opacity-50">
+              {uploading
+                ? <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                : <Camera className="w-3.5 h-3.5 text-slate-600" />}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" />
+            <input ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarUpload(f); e.target.value = '' }} />
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-800">Profile picture</p>
             <p className="text-xs text-slate-400 mt-0.5">JPG, PNG or GIF. Max 2MB.</p>
-            <button onClick={() => fileRef.current?.click()}
-              className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
-              Upload photo
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors disabled:opacity-50">
+              {uploading ? 'Uploading…' : 'Upload photo'}
             </button>
           </div>
         </div>

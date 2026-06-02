@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search, Sparkles,
-  Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck,
+  Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck, User, Bell, Shield,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { AiAssistantPanel } from './AiAssistantPanel'
@@ -71,7 +71,10 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
   }, [profileOpen])
 
   const menuItems = [
-    { icon: Settings, label: 'My settings', href: '/settings' },
+    { icon: User,     label: 'Edit profile',       href: '/settings' },
+    { icon: Bell,     label: 'Notifications',       href: '/settings?tab=notifications' },
+    { icon: Shield,   label: 'Security & password', href: '/settings?tab=security' },
+    { icon: Settings, label: 'Account preferences', href: '/settings?tab=account' },
   ]
 
   return (

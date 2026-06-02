@@ -6,7 +6,8 @@ import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
 import { SettingsClient } from '@/components/settings/SettingsClient'
 import { redirect } from 'next/navigation'
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -40,6 +41,7 @@ export default async function SettingsPage() {
         userName={userName}
         userEmail={userEmail}
         userRole={userRole}
+        initialTab={tab as any}
       />
     </UserClientWrapper>
   )
