@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, Copy, MoreVertical, Pencil, Clock } from 'lucide-react'
+import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, Copy, MoreVertical, Pencil, Clock, Globe, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -30,12 +30,14 @@ type SubjectRow = {
   updated_at: string
   topics: { id: string; steps: { id: string }[] }[]
   quizzes: { id: string }[]
+  assignments: { id: string }[]
 }
 
 export default function SubjectsPage() {
   const supabase = createClient()
   const router = useRouter()
   const [subjects, setSubjects] = useState<SubjectRow[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -51,11 +53,15 @@ export default function SubjectsPage() {
   }, [])
 
   async function loadSubjects() {
-    const { data } = await supabase
-      .from('subjects')
-      .select(`id, title, description, emoji, cover_color, created_at, updated_at, topics(id, steps(id)), quizzes(id)`)
-      .order('created_at', { ascending: false })
-    setSubjects(data ?? [])
+    const [subjectsRes, usersRes] = await Promise.all([
+      supabase
+        .from('subjects')
+        .select(`id, title, description, emoji, cover_color, created_at, updated_at, topics(id, steps(id)), quizzes(id), assignments(id)`)
+        .order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    ])
+    setSubjects(subjectsRes.data ?? [])
+    setTotalUsers(usersRes.count ?? 0)
     setLoading(false)
   }
 
@@ -138,6 +144,9 @@ export default function SubjectsPage() {
             const topicsCount = subject.topics?.length ?? 0
             const stepsCount = subject.topics?.reduce((acc, t) => acc + (t.steps?.length ?? 0), 0) ?? 0
             const hasQuiz = subject.quizzes?.length > 0
+            const accessCount = subject.assignments?.length ?? 0
+            const isEveryone = totalUsers > 0 && accessCount >= totalUsers
+            const isRestricted = !isEveryone
             const isDeleting = deleting === subject.id
             const isDuplicating = duplicating === subject.id
 
@@ -223,6 +232,15 @@ export default function SubjectsPage() {
                     {hasQuiz && (
                       <div className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-2.5 py-1.5">
                         <HelpCircle className="w-3 h-3" /> Quiz
+                      </div>
+                    )}
+                    {isRestricted ? (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5" title={`Only ${accessCount} ${accessCount === 1 ? 'person has' : 'people have'} access`}>
+                        <Lock className="w-3 h-3" /> {accessCount} {accessCount === 1 ? 'person' : 'people'}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5" title="Everyone has access">
+                        <Globe className="w-3 h-3" /> Everyone
                       </div>
                     )}
                     <div className="flex items-center gap-1 text-[11px] text-slate-300 ml-1">

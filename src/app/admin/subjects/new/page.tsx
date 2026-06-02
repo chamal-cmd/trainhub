@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Globe, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { COVER_COLORS, COVER_EMOJIS } from '@/lib/utils'
 
@@ -17,6 +17,7 @@ export default function NewSubjectPage() {
   const [description, setDescription] = useState('')
   const [color, setColor] = useState(COVER_COLORS[0])
   const [emoji, setEmoji] = useState(COVER_EMOJIS[0])
+  const [visibility, setVisibility] = useState<'everyone' | 'specific'>('everyone')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -41,15 +42,21 @@ export default function NewSubjectPage() {
       return
     }
 
-    // Auto-assign new module to ALL users by default
-    const { data: profiles } = await supabase.from('profiles').select('id')
-    if (profiles?.length) {
-      await supabase.from('assignments').insert(
-        profiles.map(p => ({ user_id: p.id, subject_id: data.id }))
-      )
+    // Assign to everyone only when visibility is "everyone".
+    // For "specific", leave unassigned — admin picks people via Manage Access
+    // on the next screen, so only those users will see the module.
+    if (visibility === 'everyone') {
+      const { data: profiles } = await supabase.from('profiles').select('id')
+      if (profiles?.length) {
+        await supabase.from('assignments').insert(
+          profiles.map(p => ({ user_id: p.id, subject_id: data.id }))
+        )
+      }
     }
 
-    router.push(`/admin/subjects/${data.id}`)
+    // Tell the edit page to auto-open Manage Access when restricting
+    const suffix = visibility === 'specific' ? '?access=1' : ''
+    router.push(`/admin/subjects/${data.id}${suffix}`)
   }
 
   return (
@@ -133,6 +140,47 @@ export default function NewSubjectPage() {
               />
             ))}
           </div>
+        </div>
+
+        {/* Visibility */}
+        <div className="space-y-2">
+          <Label>Who can see this module?</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setVisibility('everyone')}
+              className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
+                visibility === 'everyone'
+                  ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}
+            >
+              <Globe className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'everyone' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Everyone</p>
+                <p className="text-xs text-slate-400 mt-0.5">All team members are assigned automatically</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVisibility('specific')}
+              className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
+                visibility === 'specific'
+                  ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                  : 'border-slate-200 hover:border-slate-300 bg-white'
+              }`}
+            >
+              <Lock className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'specific' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Specific people</p>
+                <p className="text-xs text-slate-400 mt-0.5">Only people you pick can see it (client-specific)</p>
+              </div>
+            </button>
+          </div>
+          {visibility === 'specific' && (
+            <p className="text-xs text-indigo-500">You&apos;ll choose who has access on the next screen.</p>
+          )}
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

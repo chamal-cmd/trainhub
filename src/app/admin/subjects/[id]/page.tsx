@@ -85,6 +85,15 @@ export default function SubjectEditorPage({ params }: PageParams) {
 
   useEffect(() => { loadData() }, [id])
 
+  // Auto-open Manage Access when arriving from "Specific people" module creation
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('access') === '1') {
+      setShowAccessModal(true)
+      // Clean the query param so a refresh doesn't reopen it
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
+
   async function loadData() {
     const { data } = await supabase
       .from('subjects')
