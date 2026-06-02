@@ -64,35 +64,47 @@ export default function UsersPage() {
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
-    setInviting(true)
     setInviteError('')
 
-    const res = await fetch('/api/admin/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: inviteEmail,
-        fullName: inviteName,
-        role: inviteRole,
-        sendInvite: true, // sends invite email — user sets own password
-      }),
-    })
-    const json = await res.json()
-
-    if (!res.ok) {
-      setInviteError(json.error ?? 'Failed to invite user')
-      setInviting(false)
-      return
-    }
-
-    const sentTo = inviteEmail
+    // Capture values before clearing
+    const sentTo   = inviteEmail
     const sentRole = inviteRole
-    await Promise.all([loadUsers(), loadPending()])
+    const sentName = inviteName
+
+    // ── Show success instantly (optimistic UI) ──
     setShowInvite(false)
     setInviteEmail('')
     setInviteName('')
-    setInviting(false)
     setInviteSuccess({ email: sentTo, role: sentRole })
+
+    // ── Send invite in background — doesn't block the UI ──
+    fetch('/api/admin/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sentTo, fullName: sentName, role: sentRole, sendInvite: true }),
+    }).then(async res => {
+      const json = await res.json()
+      if (!res.ok) {
+        // Rollback: reopen modal with error
+        setInviteSuccess(null)
+        setInviteEmail(sentTo)
+        setInviteName(sentName)
+        setInviteRole(sentRole)
+        setInviteError(json.error ?? 'Failed to invite user')
+        setShowInvite(true)
+      } else {
+        // Refresh lists quietly in background
+        Promise.all([loadUsers(), loadPending()]).catch(() => {})
+      }
+    }).catch(() => {
+      // Network error — rollback
+      setInviteSuccess(null)
+      setInviteEmail(sentTo)
+      setInviteName(sentName)
+      setInviteRole(sentRole)
+      setInviteError('Network error — please try again.')
+      setShowInvite(true)
+    })
   }
 
   const filtered = users.filter(u =>
