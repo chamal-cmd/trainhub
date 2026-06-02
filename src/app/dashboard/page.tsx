@@ -28,12 +28,14 @@ export default async function UserDashboard() {
   ])
 
   // Tools fetched separately so a missing table never crashes the whole page
-  const toolsRes = await supabase
-    .from('tools')
-    .select('id, name, emoji, category, website_url')
-    .order('name')
-    .limit(8)
-    .catch(() => ({ data: [] }))
+  let toolsRes: { data: any[] | null } = { data: [] }
+  try {
+    toolsRes = await supabase
+      .from('tools')
+      .select('id, name, emoji, category, website_url')
+      .order('name')
+      .limit(8)
+  } catch { toolsRes = { data: [] } }
 
   const assignments   = assignmentsRes.data ?? []
   const stepProgress  = progressRes.data ?? []

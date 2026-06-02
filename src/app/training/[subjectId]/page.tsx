@@ -37,7 +37,10 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   ])
 
   // quiz_attempts fetched separately — table may not exist yet
-  const quizAttemptsRes = await supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id).catch(() => ({ data: [] }))
+  let quizAttemptsRes: { data: any[] | null } = { data: [] }
+  try {
+    quizAttemptsRes = await supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
+  } catch { /* quiz_attempts may not exist */ }
 
   const profile    = profileRes.data
   const assignment = assignmentRes.data

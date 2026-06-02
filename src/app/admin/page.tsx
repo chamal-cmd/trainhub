@@ -27,9 +27,13 @@ export default async function AdminDashboard() {
   ])
 
   // quiz_attempts fetched separately — table may not exist yet
-  const passedRes      = await supabase.from('quiz_attempts').select('*', { count: 'exact', head: true }).eq('passed', true).catch(() => ({ count: 0 }))
-  const recentAttemptsRes = await supabase.from('quiz_attempts').select('id, score, passed, completed_at, profiles(full_name), quizzes(title)').order('completed_at', { ascending: false }).limit(8).catch(() => ({ data: [] }))
-  const passedCount    = (passedRes as any).count ?? 0
+  let passedCount = 0
+  let recentAttemptsRes: { data: any[] | null } = { data: [] }
+  try {
+    const passedRes = await supabase.from('quiz_attempts').select('*', { count: 'exact', head: true }).eq('passed', true)
+    passedCount = (passedRes as any).count ?? 0
+    recentAttemptsRes = await supabase.from('quiz_attempts').select('id, score, passed, completed_at, profiles(full_name), quizzes(title)').order('completed_at', { ascending: false }).limit(8)
+  } catch { /* quiz_attempts may not exist */ }
 
   const profile       = profileRes.data
   const recentSubjects = recentSubjectsRes.data
