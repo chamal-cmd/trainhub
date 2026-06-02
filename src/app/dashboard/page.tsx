@@ -257,7 +257,6 @@ export default async function UserDashboard() {
                         rel="noopener noreferrer"
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
                         title={`Open ${tool.name}`}
-                        onClick={e => e.stopPropagation()}
                       >
                         <ExternalLink className="w-3 h-3 text-slate-400 hover:text-slate-600" />
                       </a>
