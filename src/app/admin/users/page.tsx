@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [invitePassword, setInvitePassword] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [inviteSuccess, setInviteSuccess] = useState<{email: string; role: 'user'|'admin'} | null>(null)
 
   useEffect(() => { loadUsers() }, [])
 
@@ -58,12 +59,14 @@ export default function UsersPage() {
       return
     }
 
+    const sentTo = inviteEmail
+    const sentRole = inviteRole
     await loadUsers()
     setShowInvite(false)
     setInviteEmail('')
     setInviteName('')
     setInviting(false)
-    alert(`✅ Invite sent to ${inviteEmail} as ${inviteRole === 'admin' ? 'Admin' : 'Team Member'}. They'll receive an email to set their password.`)
+    setInviteSuccess({ email: sentTo, role: sentRole })
   }
 
   const filtered = users.filter(u =>
@@ -127,6 +130,53 @@ export default function UsersPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Invite Success Modal ── */}
+      {inviteSuccess && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" onClick={() => setInviteSuccess(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center animate-in zoom-in-95 duration-200">
+              {/* Animated checkmark */}
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
+                inviteSuccess.role === 'admin' ? 'bg-purple-100' : 'bg-emerald-100'
+              }`}>
+                <Mail className={`w-7 h-7 ${inviteSuccess.role === 'admin' ? 'text-purple-600' : 'text-emerald-600'}`} />
+              </div>
+
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Invitation Sent! 🎉</h2>
+              <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+                An invite email has been sent to{' '}
+                <strong className="text-slate-700">{inviteSuccess.email}</strong>
+                {' '}as a{' '}
+                <span className={`font-semibold ${inviteSuccess.role === 'admin' ? 'text-purple-700' : 'text-indigo-700'}`}>
+                  {inviteSuccess.role === 'admin' ? '🛡️ Admin' : '👤 Team Member'}
+                </span>.
+              </p>
+
+              <div className="bg-slate-50 rounded-xl px-4 py-3 mb-5 text-left">
+                <p className="text-xs text-slate-500 mb-1 font-medium">What happens next:</p>
+                <ol className="text-xs text-slate-600 space-y-1">
+                  <li>1. They receive an email with a secure link</li>
+                  <li>2. They click it → set their password</li>
+                  <li>3. They're in as {inviteSuccess.role === 'admin' ? 'Admin' : 'Team Member'} ✅</li>
+                </ol>
+              </div>
+
+              <button
+                onClick={() => setInviteSuccess(null)}
+                className={`w-full h-10 rounded-xl text-white text-sm font-semibold transition-colors ${
+                  inviteSuccess.role === 'admin'
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Invite User Dialog */}
