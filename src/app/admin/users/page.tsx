@@ -62,8 +62,8 @@ export default function UsersPage() {
     setShowInvite(false)
     setInviteEmail('')
     setInviteName('')
-    setInvitePassword('')
     setInviting(false)
+    alert(`✅ Invite sent to ${inviteEmail} as ${inviteRole === 'admin' ? 'Admin' : 'Team Member'}. They'll receive an email to set their password.`)
   }
 
   const filtered = users.filter(u =>
@@ -81,9 +81,9 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-slate-900">Users</h1>
           <p className="text-slate-500 text-sm mt-1">{users.filter(u => u.role === 'user').length} users · {users.filter(u => u.role === 'admin').length} admins</p>
         </div>
-        <Button onClick={() => setShowInvite(true)}>
-          <Plus className="w-4 h-4" />
-          Add User
+        <Button onClick={() => { setShowInvite(true); setInviteRole('user'); setInviteError('') }}>
+          <Mail className="w-4 h-4" />
+          Invite User
         </Button>
       </div>
 
@@ -129,48 +129,72 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Add User Dialog */}
-      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+      {/* Invite User Dialog */}
+      <Dialog open={showInvite} onOpenChange={v => { setShowInvite(v); setInviteError('') }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
+            <DialogTitle>Send Invite</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleInvite} className="space-y-4">
+
+            {/* Invite type — prominent two-option picker */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setInviteRole('user')}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  inviteRole === 'user'
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="text-2xl mb-1.5">👤</div>
+                <p className={`text-sm font-bold ${inviteRole === 'user' ? 'text-indigo-700' : 'text-slate-800'}`}>
+                  Team Member
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">Access to training modules</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteRole('admin')}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  inviteRole === 'admin'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="text-2xl mb-1.5">🛡️</div>
+                <p className={`text-sm font-bold ${inviteRole === 'admin' ? 'text-purple-700' : 'text-slate-800'}`}>
+                  Admin
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">Full access + manage users</p>
+              </button>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Full Name</Label>
               <Input placeholder="Jane Smith" value={inviteName} onChange={e => setInviteName(e.target.value)} required />
             </div>
             <div className="space-y-1.5">
               <Label>Email Address</Label>
-              <Input type="email" placeholder="jane@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required />
+              <Input type="email" placeholder="jane@gpbookkeeper.com.au" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} required />
             </div>
-            <div className="space-y-1.5">
-              <Label>Temporary Password</Label>
-              <Input type="password" placeholder="Min 6 characters" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required minLength={6} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Role</Label>
-              <div className="flex gap-3">
-                {(['user', 'admin'] as const).map(role => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setInviteRole(role)}
-                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
-                      inviteRole === role
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    {role === 'admin' ? '🛡️ Admin' : '👤 User'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {inviteError && <p className="text-sm text-red-600">{inviteError}</p>}
+
+            <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2">
+              📧 An invite email will be sent — they set their own password when they join.
+            </p>
+
+            {inviteError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{inviteError}</p>}
+
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
-              <Button type="submit" loading={inviting}>Create User</Button>
+              <Button
+                type="submit"
+                loading={inviting}
+                className={inviteRole === 'admin' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+              >
+                Send {inviteRole === 'admin' ? 'Admin' : 'Team Member'} Invite
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
