@@ -156,26 +156,55 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
       const ctx = aiCtx ?? { userName, completionRate, userRole: 'Bookkeeper', modules: [], tools: [] }
       const userContext = `Name: ${ctx.userName}, Role: ${ctx.userRole}, Overall completion: ${ctx.completionRate}%, Modules: ${ctx.modules.map(m => `${m.title} (${m.percent}%)`).join(', ') || 'none'}`
 
-      const res = await fetch('/api/ai-chat', {
+      // Fetch knowledge base files client-side
+      let knowledgeSection = ''
+      try {
+        const supabase = createClient()
+        const { data: kbFiles } = await supabase
+          .from('knowledge_files')
+          .select('name, content')
+          .order('created_at', { ascending: true })
+        if (kbFiles?.length) {
+          const query = trimmed.toLowerCase()
+          const relevant = kbFiles
+            .map(f => ({ f, score: (f.name + ' ' + f.content).toLowerCase().split(/\s+/).filter(w => w.length > 2 && query.includes(w)).length }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 2)
+            .map(x => x.f)
+          if (relevant.length) {
+            knowledgeSection = '\n\n---\n## Company Knowledge Base\n'
+            for (const f of relevant) {
+              knowledgeSection += `### ${f.name}\n${f.content.slice(0, 2000)}\n\n`
+            }
+            knowledgeSection += '---'
+          }
+        }
+      } catch { /* knowledge base optional */ }
+
+      // Call Anthropic directly from browser — no serverless function, no timeout
+      const systemPrompt = `You are a helpful AI assistant built into TrainHub, a training platform for GP Bookkeeper (~30 bookkeepers). Be concise (1-3 short paragraphs). Use the knowledge base documents below if relevant.${knowledgeSection}\n\nUser context: ${userContext}`
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY ?? '',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
         body: JSON.stringify({
+          model: 'claude-3-5-haiku-20241022',
+          max_tokens: 1024,
+          system: systemPrompt,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-          userContext,
         }),
         signal: abort.signal,
       })
 
-      if (!res.ok || !res.body) throw new Error('AI request failed')
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
+      if (!res.ok) throw new Error('AI request failed')
+      const data = await res.json()
+      const accumulated = (data.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
+      {
         setMessages(prev => prev.map(m =>
           m.id === assistantId ? { ...m, content: accumulated } : m
         ))
