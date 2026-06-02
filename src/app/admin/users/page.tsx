@@ -40,32 +40,29 @@ export default function UsersPage() {
     setInviting(true)
     setInviteError('')
 
-    const { data, error } = await supabase.auth.admin.createUser({
-      email: inviteEmail,
-      password: invitePassword,
-      email_confirm: true,
-      user_metadata: { full_name: inviteName },
+    const res = await fetch('/api/admin/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: inviteEmail,
+        fullName: inviteName,
+        role: inviteRole,
+        sendInvite: true, // sends invite email — user sets own password
+      }),
     })
+    const json = await res.json()
 
-    if (error) {
-      setInviteError(error.message)
+    if (!res.ok) {
+      setInviteError(json.error ?? 'Failed to invite user')
       setInviting(false)
       return
     }
 
-    if (data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: inviteEmail,
-        full_name: inviteName,
-        role: inviteRole,
-      })
-      await loadUsers()
-      setShowInvite(false)
-      setInviteEmail('')
-      setInviteName('')
-      setInvitePassword('')
-    }
+    await loadUsers()
+    setShowInvite(false)
+    setInviteEmail('')
+    setInviteName('')
+    setInvitePassword('')
     setInviting(false)
   }
 

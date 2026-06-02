@@ -32,17 +32,19 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const [mode, setMode]           = useState<'signin' | 'signup'>('signin')
   const [email, setEmail]         = useState('')
   const [password, setPassword]   = useState('')
+  const [fullName, setFullName]   = useState('')
   const [showPass, setShowPass]   = useState(false)
   const [error, setError]         = useState(() => {
     const raw = searchParams.get('error')
     if (!raw) return ''
-    // Supabase passes error codes like "access_denied" — make them readable
-    if (raw === 'access_denied') return 'Google sign-in was cancelled. Try again or use a demo account below.'
-    if (raw === 'auth_failed')   return 'Sign-in failed. Google OAuth may not be configured yet — use a demo account below.'
-    return `Sign-in error: ${decodeURIComponent(raw)}. Try a demo account below.`
+    if (raw === 'access_denied') return 'Google sign-in was cancelled.'
+    if (raw === 'auth_failed')   return 'Sign-in failed. Please try again.'
+    return `Sign-in error: ${decodeURIComponent(raw)}.`
   })
+  const [success, setSuccess]     = useState('')
   const [loading, setLoading]     = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [demoKey, setDemoKey]     = useState<string | null>(null)
@@ -123,7 +125,7 @@ function LoginPageInner() {
     const supabase = createClient()
     const { error: err } = await supabase.auth.signInWithPassword({ email: e_, password: p_ })
     if (err) {
-      setError(demo ? 'Demo account not set up yet — run the seed SQL first.' : 'Incorrect email or password.')
+      setError(demo ? 'Demo account not set up yet.' : 'Incorrect email or password.')
       setLoading(false); setDemoKey(null); return
     }
     const { data: { user } } = await supabase.auth.getUser()
@@ -132,6 +134,23 @@ function LoginPageInner() {
       router.push(profile?.role === 'admin' ? '/admin' : '/dashboard')
       router.refresh()
     }
+  }
+
+  async function signUp(e: React.FormEvent) {
+    e.preventDefault()
+    if (!fullName.trim()) { setError('Please enter your full name.'); return }
+    setLoading(true)
+    setError('')
+    const supabase = createClient()
+    const { error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName.trim() } },
+    })
+    setLoading(false)
+    if (err) { setError(err.message); return }
+    setSuccess('Account created! Check your email to confirm your address, then sign in.')
+    setMode('signin')
   }
 
   const busy = loading || googleLoading || !!demoKey
@@ -201,37 +220,79 @@ function LoginPageInner() {
             <span className="font-bold text-lg text-slate-900">TrainHub</span>
           </div>
 
+          {/* ── Mode toggle ── */}
+          <div className="flex bg-slate-100 rounded-xl p-1 mb-7">
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setError(''); setSuccess('') }}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'signin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('signup'); setError(''); setSuccess('') }}
+              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'signup' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Sign Up
+            </button>
+          </div>
+
           <div className="mb-7">
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome back</h2>
-            <p className="text-slate-400 text-sm mt-1">Sign in to your training portal</p>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              {mode === 'signin' ? 'Welcome back' : 'Create account'}
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">
+              {mode === 'signin' ? 'Sign in to your training portal' : 'Join the GP Bookkeeper training portal'}
+            </p>
           </div>
 
-          {/* ── Google Sign-In (primary) ── */}
-          <button
-            onClick={signInWithGoogle}
-            disabled={busy}
-            className="w-full flex items-center justify-center gap-3 h-12 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 text-slate-700 text-sm font-semibold transition-all shadow-sm disabled:opacity-60 mb-3"
-          >
-            {googleLoading
-              ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-              : <GoogleLogo />}
-            {googleLoading ? 'Redirecting to Google…' : 'Sign in with Google'}
-          </button>
+          {/* ── Google Sign-In (sign in only) ── */}
+          {mode === 'signin' && (
+            <>
+              <button
+                onClick={signInWithGoogle}
+                disabled={busy}
+                className="w-full flex items-center justify-center gap-3 h-12 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 text-slate-700 text-sm font-semibold transition-all shadow-sm disabled:opacity-60 mb-3"
+              >
+                {googleLoading
+                  ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                  : <GoogleLogo />}
+                {googleLoading ? 'Redirecting to Google…' : 'Sign in with Google'}
+              </button>
 
-          <p className="text-[11px] text-center text-slate-400 mb-7 leading-relaxed px-2">
-            Use your <span className="font-semibold text-slate-600">GP Bookkeeper Google Workspace account.</span>
-            {' '}Your pod and role are assigned automatically.
-          </p>
+              <p className="text-[11px] text-center text-slate-400 mb-7 leading-relaxed px-2">
+                Use your <span className="font-semibold text-slate-600">GP Bookkeeper Google Workspace account.</span>
+              </p>
 
-          {/* ── Divider ── */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-xs font-medium text-slate-400">or continue with email</span>
-            <div className="flex-1 h-px bg-slate-100" />
-          </div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex-1 h-px bg-slate-100" />
+                <span className="text-xs font-medium text-slate-400">or continue with email</span>
+                <div className="flex-1 h-px bg-slate-100" />
+              </div>
+            </>
+          )}
 
-          {/* ── Email / password ── */}
-          <form onSubmit={e => { e.preventDefault(); signIn(email, password) }} className="space-y-4">
+          {/* ── Success message ── */}
+          {success && (
+            <div className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+              {success}
+            </div>
+          )}
+
+          {/* ── Email / password form ── */}
+          <form onSubmit={mode === 'signup' ? signUp : e => { e.preventDefault(); signIn(email, password) }} className="space-y-4">
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
+                <input
+                  type="text" required autoComplete="name"
+                  placeholder="Chamal Abeytunga"
+                  value={fullName} onChange={e => setFullName(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
               <input
@@ -244,9 +305,11 @@ function LoginPageInner() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-medium text-slate-700">Password</label>
-                <a href="/forgot-password" className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors">
-                  Forgot password?
-                </a>
+                {mode === 'signin' && (
+                  <a href="/forgot-password" className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors">
+                    Forgot password?
+                  </a>
+                )}
               </div>
               <div className="relative">
                 <input
@@ -274,14 +337,25 @@ function LoginPageInner() {
               className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold transition-all shadow-sm shadow-indigo-200 disabled:opacity-70 flex items-center justify-center gap-2"
             >
               {loading
-                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in…</>
-                : 'Sign in'}
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {mode === 'signup' ? 'Creating account…' : 'Signing in…'}</>
+                : mode === 'signup' ? 'Create account' : 'Sign in'}
             </button>
           </form>
 
           <p className="text-center text-xs text-slate-400 mt-6">
-            Don't have an account?{' '}
-            <span className="text-indigo-500 font-medium">Contact your administrator.</span>
+            {mode === 'signin' ? (
+              <>New here?{' '}
+                <button onClick={() => setMode('signup')} className="text-indigo-500 font-medium hover:text-indigo-700">
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>Already have an account?{' '}
+                <button onClick={() => setMode('signin')} className="text-indigo-500 font-medium hover:text-indigo-700">
+                  Sign in
+                </button>
+              </>
+            )}
           </p>
         </div>
       </div>
