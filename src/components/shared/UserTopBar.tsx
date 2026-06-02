@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Search, HelpCircle, Bell, Sparkles,
+  Search, Sparkles,
   Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
@@ -105,12 +105,6 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
 
         {/* Right icons */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
-          <IconBtn title="Help">
-            <HelpCircle className="w-5 h-5" />
-          </IconBtn>
-          <IconBtn title="Notifications">
-            <Bell className="w-5 h-5" />
-          </IconBtn>
           <button
             title="AI Assistant (Ctrl+K)"
             onClick={() => setAiOpen(v => !v)}

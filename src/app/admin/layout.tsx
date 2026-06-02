@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { AdminSidebar } from '@/components/shared/AdminSidebar'
+import { AdminTopBar } from '@/components/shared/AdminTopBar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -26,7 +27,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen bg-slate-50">
       <AdminSidebar userName={userName} userEmail={userEmail} />
-      <main className="flex-1 overflow-auto min-w-0">{children}</main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <AdminTopBar userName={userName} userEmail={userEmail} />
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
     </div>
   )
 }
