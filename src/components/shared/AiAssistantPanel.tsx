@@ -193,7 +193,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
           'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-5',
           max_tokens: 1024,
           system: systemPrompt,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
