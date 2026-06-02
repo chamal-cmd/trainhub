@@ -76,7 +76,7 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
 
   return (
     <>
-    <aside className="w-[220px] min-h-screen bg-[#1E1B4B] flex flex-col shrink-0 select-none">
+    <aside className="w-[220px] h-full bg-[#1E1B4B] flex flex-col shrink-0 select-none overflow-y-auto">
       {/* Logo */}
       <div className="px-5 h-16 flex items-center border-b border-white/[0.07]">
         <div className="flex items-center gap-3">
