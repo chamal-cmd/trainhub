@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, Copy, MoreVertical, Pencil, Clock, Globe, Lock, Eye, Users, Check, X } from 'lucide-react'
+import { Plus, BookOpen, FileText, HelpCircle, Trash2, MoreVertical, Pencil, Clock, Globe, Lock, Users, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -204,7 +204,7 @@ export default function SubjectsPage() {
                           className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 w-48 text-sm"
                           onClick={e => e.stopPropagation()}
                         >
-                          {/* Rename (inline) */}
+                          {/* Rename */}
                           {renaming === subject.id ? (
                             <div className="flex items-center gap-1 px-2 py-1.5">
                               <input
@@ -233,36 +233,12 @@ export default function SubjectsPage() {
                             <Users className="w-3.5 h-3.5 text-slate-400" /> Manage Access
                           </Link>
 
-                          {/* Preview */}
-                          <Link href={`/training/${subject.id}`} target="_blank"
-                            onClick={() => setOpenMenu(null)}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <Eye className="w-3.5 h-3.5 text-slate-400" /> Preview
-                          </Link>
-
-                          {/* Edit content */}
-                          <Link href={`/admin/subjects/${subject.id}`}
-                            onClick={() => setOpenMenu(null)}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-400" /> Edit content
-                          </Link>
-
-                          {/* Quiz Builder */}
+                          {/* Build Quiz */}
                           <Link href={`/admin/subjects/${subject.id}/quiz`}
                             onClick={() => setOpenMenu(null)}
                             className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> Quiz Builder
+                            <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> Build Quiz
                           </Link>
-
-                          {/* Duplicate */}
-                          <button
-                            onClick={() => { setOpenMenu(null); duplicateSubject(subject) }}
-                            disabled={isDuplicating}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors w-full text-left"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-slate-400" />
-                            {isDuplicating ? 'Duplicating…' : 'Duplicate'}
-                          </button>
 
                           <div className="border-t border-slate-100 my-1" />
 
@@ -271,7 +247,7 @@ export default function SubjectsPage() {
                             onClick={() => { setOpenMenu(null); deleteSubject(subject) }}
                             className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-red-50 text-red-600 transition-colors w-full text-left"
                           >
-                            <Trash2 className="w-3.5 h-3.5" /> Delete module
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
                           </button>
                         </div>
                       )}
