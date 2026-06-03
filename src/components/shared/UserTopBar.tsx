@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Search, Sparkles, Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck,
 } from 'lucide-react'
-import { Progress } from '@/components/ui/progress'
 import { AiAssistantPanel } from './AiAssistantPanel'
 
 interface UserTopBarProps {
@@ -67,23 +66,6 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
     router.refresh()
   }
 
-  // Close panel when clicking outside
-  useEffect(() => {
-    function onMouseDown(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setProfileOpen(false)
-      }
-    }
-    if (profileOpen) document.addEventListener('mousedown', onMouseDown)
-    return () => document.removeEventListener('mousedown', onMouseDown)
-  }, [profileOpen])
-
-  const menuItems = [
-    { icon: User,     label: 'Edit profile',       href: '/settings' },
-    { icon: Bell,     label: 'Notifications',       href: '/settings?tab=notifications' },
-    { icon: Shield,   label: 'Security & password', href: '/settings?tab=security' },
-    { icon: Settings, label: 'Account preferences', href: '/settings?tab=account' },
-  ]
 
   return (
     <>
