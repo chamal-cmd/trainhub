@@ -98,7 +98,7 @@ export function AdminTopBar({ userName, userEmail }: Props) {
                   <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
                   <p className="text-xs text-slate-400 truncate">{userEmail}</p>
                 </div>
-                <Link href="/settings" onClick={() => setMenuOpen(false)}
+                <Link href="/admin/settings" onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
                   <Settings className="w-4 h-4 text-slate-400" /> Settings
                 </Link>

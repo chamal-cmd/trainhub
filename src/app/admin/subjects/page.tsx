@@ -195,7 +195,7 @@ export default function SubjectsPage() {
                     <div className="relative shrink-0">
                       <button
                         onClick={e => { e.preventDefault(); e.stopPropagation(); setOpenMenu(openMenu === subject.id ? null : subject.id) }}
-                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
