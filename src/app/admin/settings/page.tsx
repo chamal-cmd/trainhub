@@ -15,12 +15,11 @@ export default async function AdminSettingsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, email, role')
-    .eq('id', user.id)
-    .single()
-    .catch(() => ({ data: null }))
+  let profile: any = null
+  try {
+    const res = await supabase.from('profiles').select('full_name, email, role').eq('id', user.id).single()
+    profile = res.data
+  } catch {}
 
   const userName  = profile?.full_name ?? ''
   const userEmail = user.email ?? profile?.email ?? ''
