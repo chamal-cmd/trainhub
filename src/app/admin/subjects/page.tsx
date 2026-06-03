@@ -163,7 +163,7 @@ export default function SubjectsPage() {
               <div
                 key={subject.id}
                 className={cn(
-                  'bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
+                  'bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all group animate-fade-up relative',
                   isDeleting && 'opacity-50 pointer-events-none'
                 )}
                 style={{ animationDelay: `${i * 0.04}s` }}
