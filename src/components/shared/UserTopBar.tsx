@@ -5,8 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Search, Sparkles,
-  Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck, User, Bell, Shield,
+  Search, Sparkles, Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { AiAssistantPanel } from './AiAssistantPanel'
@@ -20,11 +19,20 @@ interface UserTopBarProps {
 }
 
 export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, onToggle }: UserTopBarProps) {
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [aiOpen, setAiOpen]           = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const panelRef = useRef<HTMLDivElement>(null)
+  const [aiOpen,       setAiOpen]       = useState(false)
+  const [menuOpen,     setMenuOpen]     = useState(false)
+  const [searchQuery,  setSearchQuery]  = useState('')
+  const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    if (menuOpen) document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [menuOpen])
 
   // Ctrl+K global shortcut to open/close AI panel
   useEffect(() => {
@@ -132,83 +140,45 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
             </Link>
           )}
 
-          {/* Avatar */}
-          <button
-            onClick={() => setProfileOpen(v => !v)}
-            className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold ml-1 hover:ring-2 hover:ring-indigo-300 transition-all"
-          >
-            {initials}
-          </button>
+          {/* Avatar + dropdown */}
+          <div className="relative ml-1" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-indigo-300 transition-all"
+            >
+              {initials}
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-10 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50 animate-in zoom-in-95 duration-100">
+                {/* User info */}
+                <div className="px-4 py-2.5 border-b border-slate-100 mb-1">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{userName}</p>
+                  <p className="text-xs text-slate-400 truncate">{userRole}</p>
+                </div>
+                {/* Settings */}
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  Settings
+                </Link>
+                <div className="border-t border-slate-100 mt-1 pt-1">
+                  <button
+                    onClick={() => { setMenuOpen(false); handleSignOut() }}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
-
-      {/* ── Profile panel (right drawer) ── */}
-      {profileOpen && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
-
-          {/* Panel */}
-          <div
-            ref={panelRef}
-            className="fixed right-0 top-0 h-full w-72 bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200 animate-in slide-in-from-right-2 duration-150"
-          >
-            {/* User info */}
-            <div className="px-5 pt-6 pb-5 border-b border-slate-100">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-11 h-11 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  {initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 truncate">{userName}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{userRole}</p>
-                </div>
-              </div>
-
-              {/* Completion rate */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Completion rate</span>
-                  <span className="text-xs font-bold text-orange-500">{completionRate}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orange-500 rounded-full transition-all duration-500"
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Menu items */}
-            <nav className="flex-1 overflow-y-auto py-2">
-              {menuItems.map((item, i) => (
-                <Link
-                  key={i}
-                  href={item.href}
-                  onClick={() => item.href !== '#' && setProfileOpen(false)}
-                  className="flex items-center gap-3 px-5 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <item.icon className="w-4 h-4 text-slate-400 shrink-0" />
-                  {item.label}
-                </Link>
-              ))}
-
-            </nav>
-
-            {/* Sign out */}
-            <div className="border-t border-slate-100 p-3">
-              <button
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── AI Assistant Panel ── */}
       <AiAssistantPanel
