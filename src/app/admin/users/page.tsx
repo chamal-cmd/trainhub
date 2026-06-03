@@ -40,8 +40,14 @@ export default function UsersPage() {
     setLoading(false)
   }
 
+  async function getAuthHeader() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+  }
+
   async function loadPending() {
-    const res = await fetch('/api/admin/revoke-invite')
+    const auth = await getAuthHeader()
+    const res = await fetch('/api/admin/revoke-invite', { headers: auth })
     if (res.ok) {
       const json = await res.json()
       setPendingInvites(json.pending ?? [])
@@ -51,9 +57,10 @@ export default function UsersPage() {
   async function revokeInvite(invite: PendingInvite) {
     if (!confirm(`Revoke invite for ${invite.email}? They won't be able to use the invite link.`)) return
     setRevoking(invite.id)
+    const auth = await getAuthHeader()
     const res = await fetch('/api/admin/revoke-invite', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ userId: invite.id }),
     })
     const json = await res.json()
@@ -78,11 +85,11 @@ export default function UsersPage() {
     setInviteSuccess({ email: sentTo, role: sentRole })
 
     // ── Send invite in background — doesn't block the UI ──
-    fetch('/api/admin/invite', {
+    getAuthHeader().then(auth => fetch('/api/admin/invite', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ email: sentTo, fullName: sentName, role: sentRole, sendInvite: true }),
-    }).then(async res => {
+    })).then(async res => {
       const json = await res.json()
       if (!res.ok) {
         // Rollback: reopen modal with error
