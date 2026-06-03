@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, Copy, MoreVertical, Pencil, Clock, Globe, Lock } from 'lucide-react'
+import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, Copy, MoreVertical, Pencil, Clock, Globe, Lock, Eye, Users, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -39,9 +39,11 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([])
   const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [openMenu, setOpenMenu] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [openMenu,    setOpenMenu]    = useState<string | null>(null)
+  const [deleting,    setDeleting]    = useState<string | null>(null)
   const [duplicating, setDuplicating] = useState<string | null>(null)
+  const [renaming,    setRenaming]    = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   useEffect(() => { loadSubjects() }, [])
 
@@ -108,6 +110,13 @@ export default function SubjectsPage() {
       router.push(`/admin/subjects/${newSubj.id}`)
     }
     setDuplicating(null)
+  }
+
+  async function renameSubject(id: string) {
+    if (!renameValue.trim()) return
+    await supabase.from('subjects').update({ title: renameValue.trim() }).eq('id', id)
+    setSubjects(prev => prev.map(s => s.id === id ? { ...s, title: renameValue.trim() } : s))
+    setRenaming(null)
   }
 
   if (loading) return (
@@ -192,13 +201,60 @@ export default function SubjectsPage() {
                       </button>
                       {openMenu === subject.id && (
                         <div
-                          className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 w-44 text-sm"
+                          className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 w-48 text-sm"
                           onClick={e => e.stopPropagation()}
                         >
+                          {/* Rename (inline) */}
+                          {renaming === subject.id ? (
+                            <div className="flex items-center gap-1 px-2 py-1.5">
+                              <input
+                                autoFocus
+                                value={renameValue}
+                                onChange={e => setRenameValue(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') renameSubject(subject.id); if (e.key === 'Escape') setRenaming(null) }}
+                                className="flex-1 text-xs border border-indigo-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-400 min-w-0"
+                              />
+                              <button onClick={() => renameSubject(subject.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Check className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => setRenaming(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X className="w-3.5 h-3.5" /></button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setRenameValue(subject.title); setRenaming(subject.id) }}
+                              className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors w-full text-left"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-slate-400" /> Rename
+                            </button>
+                          )}
+
+                          {/* Manage Access */}
                           <Link href={`/admin/subjects/${subject.id}`}
+                            onClick={() => setOpenMenu(null)}
                             className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <Pencil className="w-3.5 h-3.5 text-slate-400" /> Edit content
+                            <Users className="w-3.5 h-3.5 text-slate-400" /> Manage Access
                           </Link>
+
+                          {/* Preview */}
+                          <Link href={`/training/${subject.id}`} target="_blank"
+                            onClick={() => setOpenMenu(null)}
+                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
+                            <Eye className="w-3.5 h-3.5 text-slate-400" /> Preview
+                          </Link>
+
+                          {/* Edit content */}
+                          <Link href={`/admin/subjects/${subject.id}`}
+                            onClick={() => setOpenMenu(null)}
+                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-400" /> Edit content
+                          </Link>
+
+                          {/* Quiz Builder */}
+                          <Link href={`/admin/subjects/${subject.id}/quiz`}
+                            onClick={() => setOpenMenu(null)}
+                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
+                            <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> Quiz Builder
+                          </Link>
+
+                          {/* Duplicate */}
                           <button
                             onClick={() => { setOpenMenu(null); duplicateSubject(subject) }}
                             disabled={isDuplicating}
@@ -207,7 +263,10 @@ export default function SubjectsPage() {
                             <Copy className="w-3.5 h-3.5 text-slate-400" />
                             {isDuplicating ? 'Duplicating…' : 'Duplicate'}
                           </button>
+
                           <div className="border-t border-slate-100 my-1" />
+
+                          {/* Delete */}
                           <button
                             onClick={() => { setOpenMenu(null); deleteSubject(subject) }}
                             className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-red-50 text-red-600 transition-colors w-full text-left"
