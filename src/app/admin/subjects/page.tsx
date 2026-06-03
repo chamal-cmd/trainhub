@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, MoreVertical, Pencil, Clock, Globe, Lock, Users, Check, X } from 'lucide-react'
+import { Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle, Clock, Globe, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -39,20 +39,14 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([])
   const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [openMenu,    setOpenMenu]    = useState<string | null>(null)
-  const [deleting,    setDeleting]    = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [duplicating, setDuplicating] = useState<string | null>(null)
-  const [renaming,    setRenaming]    = useState<string | null>(null)
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
   useEffect(() => { loadSubjects() }, [])
 
-  // Close menus on outside click
-  useEffect(() => {
-    function close() { setOpenMenu(null) }
-    document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
-  }, [])
 
   async function loadSubjects() {
     const [subjectsRes, usersRes] = await Promise.all([
@@ -163,7 +157,7 @@ export default function SubjectsPage() {
               <div
                 key={subject.id}
                 className={cn(
-                  'bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all group animate-fade-up relative',
+                  'bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
                   isDeleting && 'opacity-50 pointer-events-none'
                 )}
                 style={{ animationDelay: `${i * 0.04}s` }}
@@ -191,67 +185,6 @@ export default function SubjectsPage() {
                       )}
                     </div>
 
-                    {/* 3-dot menu */}
-                    <div className="relative shrink-0">
-                      <button
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpenMenu(openMenu === subject.id ? null : subject.id) }}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenu === subject.id && (
-                        <div
-                          className="absolute right-0 top-8 z-20 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 w-48 text-sm"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          {/* Rename */}
-                          {renaming === subject.id ? (
-                            <div className="flex items-center gap-1 px-2 py-1.5">
-                              <input
-                                autoFocus
-                                value={renameValue}
-                                onChange={e => setRenameValue(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') renameSubject(subject.id); if (e.key === 'Escape') setRenaming(null) }}
-                                className="flex-1 text-xs border border-indigo-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-400 min-w-0"
-                              />
-                              <button onClick={() => renameSubject(subject.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"><Check className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => setRenaming(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded"><X className="w-3.5 h-3.5" /></button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => { setRenameValue(subject.title); setRenaming(subject.id) }}
-                              className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors w-full text-left"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-slate-400" /> Rename
-                            </button>
-                          )}
-
-                          {/* Manage Access */}
-                          <Link href={`/admin/subjects/${subject.id}`}
-                            onClick={() => setOpenMenu(null)}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <Users className="w-3.5 h-3.5 text-slate-400" /> Manage Access
-                          </Link>
-
-                          {/* Build Quiz */}
-                          <Link href={`/admin/subjects/${subject.id}/quiz`}
-                            onClick={() => setOpenMenu(null)}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 transition-colors">
-                            <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> Build Quiz
-                          </Link>
-
-                          <div className="border-t border-slate-100 my-1" />
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => { setOpenMenu(null); deleteSubject(subject) }}
-                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-red-50 text-red-600 transition-colors w-full text-left"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
                   {/* Stats + edit button */}
