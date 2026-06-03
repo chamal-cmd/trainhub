@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, HelpCircle, Trash2, MoreVertical, Pencil, Clock, Globe, Lock, Users, Check, X } from 'lucide-react'
+import { Plus, BookOpen, FileText, HelpCircle, ArrowRight, Trash2, MoreVertical, Pencil, Clock, Globe, Lock, Users, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
