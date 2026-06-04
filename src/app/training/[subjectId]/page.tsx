@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation'
 import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
 import {
   ArrowLeft, CheckCircle2, HelpCircle, ChevronRight,
-  FileText, Clock, BookOpen, Lock, Sparkles
+  FileText, Clock, BookOpen, Lock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     supabase
       .from('subjects')
       .select(`id, title, description, emoji, cover_color,
-        topics(id, title, order_index, ai_quiz,
+        topics(id, title, order_index,
           steps(id, title, order_index)),
         quizzes(id, title, passing_score)`)
       .eq('id', subjectId)
@@ -41,16 +41,11 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   ])
 
   // quiz_attempts & topic completions fetched separately (tables may not exist yet)
-  let quizAttemptsRes:       { data: any[] | null } = { data: [] }
-  let topicQuizCompletions:  { data: any[] | null } = { data: [] }
+  let quizAttemptsRes: { data: any[] | null } = { data: [] }
   try {
     quizAttemptsRes = await supabase
       .from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
   } catch { /* table may not exist */ }
-  try {
-    topicQuizCompletions = await supabase
-      .from('topic_quiz_completions').select('topic_id, passed, score').eq('user_id', user.id)
-  } catch { /* table may not exist yet — migration not run */ }
 
   const profile    = profileRes.data
   const assignment = assignmentRes.data
@@ -60,14 +55,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   if (!subject) notFound()
   if (!assignment && !isAdmin) notFound()
 
-  const completedIds         = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
-  const passedQuizIds        = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
-  const passedTopicQuizIds   = new Set(
-    (topicQuizCompletions.data ?? []).filter(c => c.passed).map(c => c.topic_id)
-  )
-  const completedTopicQuizIds = new Set(
-    (topicQuizCompletions.data ?? []).map(c => c.topic_id)
-  )
+  const completedIds  = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
+  const passedQuizIds = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
 
   const topics = (subject.topics ?? [])
     .sort((a: any, b: any) => a.order_index - b.order_index)
@@ -186,9 +175,6 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
               const href      = firstStep
                 ? `/training/${subject.id}/${topic.id}?step=${firstStep.id}`
                 : `/training/${subject.id}/${topic.id}`
-              const hasAiQuiz = !!topic.ai_quiz
-              const quizDone  = completedTopicQuizIds.has(topic.id)
-              const quizPass  = passedTopicQuizIds.has(topic.id)
               const prevTopic = ti > 0 ? topics[ti - 1] : null
 
               const row = (
@@ -224,26 +210,6 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
 
                   {/* Status badges */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Topic quiz badge */}
-                    {!locked && hasAiQuiz && (
-                      quizDone ? (
-                        <span className={cn(
-                          'flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 border shrink-0',
-                          quizPass
-                            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
-                            : 'text-amber-700 bg-amber-50 border-amber-100'
-                        )}>
-                          <Sparkles className="w-2.5 h-2.5" />
-                          {quizPass ? 'Quiz passed' : 'Quiz done'}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5 shrink-0">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          Quiz ready
-                        </span>
-                      )
-                    )}
-
                     {/* Step completion badge */}
                     {status === 'completed' && (
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
