@@ -9,6 +9,7 @@ import {
   ArrowLeft, CheckCircle2, HelpCircle, ChevronRight,
   FileText, Clock, BookOpen, Lock, Sparkles
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type PageParams = { params: Promise<{ subjectId: string }> }
 
