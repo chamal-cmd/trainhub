@@ -2,14 +2,14 @@ export const runtime = 'edge'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Verify the caller is an admin using pure fetch (no supabase-js package)
 async function verifyAdmin(token: string): Promise<string | null> {
   // Get user from JWT
-  const r1 = await fetch(`${URL}/auth/v1/user`, {
+  const r1 = await fetch(`${SB_URL}/auth/v1/user`, {
     headers: { 'apikey': ANON, 'Authorization': `Bearer ${token}` },
   })
   if (!r1.ok) return null
@@ -17,7 +17,7 @@ async function verifyAdmin(token: string): Promise<string | null> {
   if (!user?.id) return null
 
   // Check admin role in profiles
-  const r2 = await fetch(`${URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
+  const r2 = await fetch(`${SB_URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
     headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
   })
   if (!r2.ok) return null
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       : new URL(req.url).origin
 
     // Send invite via Supabase Admin API
-    const invRes = await fetch(`${URL}/auth/v1/admin/invite`, {
+    const invRes = await fetch(`${SB_URL}/auth/v1/admin/invite`, {
       method: 'POST',
       headers: {
         'apikey': SVC,
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'No user id from invite' }, { status: 500 })
 
     // Set role in profiles
-    await fetch(`${URL}/rest/v1/profiles`, {
+    await fetch(`${SB_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
         'apikey': SVC,

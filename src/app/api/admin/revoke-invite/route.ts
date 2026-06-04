@@ -2,20 +2,20 @@ export const runtime = 'edge'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Verify caller is an admin — pure fetch, no supabase-js
 async function verifyAdmin(token: string): Promise<{ id: string; email: string } | null> {
-  const r1 = await fetch(`${URL}/auth/v1/user`, {
+  const r1 = await fetch(`${SB_URL}/auth/v1/user`, {
     headers: { 'apikey': ANON, 'Authorization': `Bearer ${token}` },
   })
   if (!r1.ok) return null
   const user = await r1.json()
   if (!user?.id) return null
 
-  const r2 = await fetch(`${URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
+  const r2 = await fetch(`${SB_URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
     headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
   })
   if (!r2.ok) return null
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     if (!caller) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // Fetch all users from admin API
-    const r = await fetch(`${URL}/auth/v1/admin/users?per_page=1000`, {
+    const r = await fetch(`${SB_URL}/auth/v1/admin/users?per_page=1000`, {
       headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
     })
     if (!r.ok) {
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     if (pending.length > 0) {
       const ids = pending.map((p: any) => p.id).join(',')
-      const r2 = await fetch(`${URL}/rest/v1/profiles?select=id,role,full_name&id=in.(${ids})`, {
+      const r2 = await fetch(`${SB_URL}/rest/v1/profiles?select=id,role,full_name&id=in.(${ids})`, {
         headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
       })
       if (r2.ok) {
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest) {
     if (userId === caller.id) return NextResponse.json({ error: 'Cannot revoke your own account' }, { status: 400 })
 
     // Fetch user to confirm they haven't accepted yet
-    const r1 = await fetch(`${URL}/auth/v1/admin/users/${userId}`, {
+    const r1 = await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, {
       headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
     })
     if (r1.ok) {
@@ -99,7 +99,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Delete the user
-    const r2 = await fetch(`${URL}/auth/v1/admin/users/${userId}`, {
+    const r2 = await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, {
       method: 'DELETE',
       headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
     })
