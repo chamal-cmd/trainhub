@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation'
 import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
 import {
   ArrowLeft, CheckCircle2, HelpCircle, ChevronRight,
-  FileText, Pin, Clock, BookOpen
+  FileText, Clock, BookOpen, Lock, Sparkles
 } from 'lucide-react'
 
 type PageParams = { params: Promise<{ subjectId: string }> }
@@ -29,30 +29,44 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     supabase.from('assignments').select('id, due_date').eq('subject_id', subjectId).eq('user_id', user.id).single(),
     supabase
       .from('subjects')
-      .select('id, title, description, emoji, cover_color, topics(id, title, order_index, steps(id, title, order_index)), quizzes(id, title, passing_score)')
+      .select(`id, title, description, emoji, cover_color,
+        topics(id, title, order_index, ai_quiz,
+          steps(id, title, order_index)),
+        quizzes(id, title, passing_score)`)
       .eq('id', subjectId)
       .single(),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
     supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
   ])
 
-  // quiz_attempts fetched separately — table may not exist yet
-  let quizAttemptsRes: { data: any[] | null } = { data: [] }
+  // quiz_attempts & topic completions fetched separately (tables may not exist yet)
+  let quizAttemptsRes:       { data: any[] | null } = { data: [] }
+  let topicQuizCompletions:  { data: any[] | null } = { data: [] }
   try {
-    quizAttemptsRes = await supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
-  } catch { /* quiz_attempts may not exist */ }
+    quizAttemptsRes = await supabase
+      .from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
+  } catch { /* table may not exist */ }
+  try {
+    topicQuizCompletions = await supabase
+      .from('topic_quiz_completions').select('topic_id, passed, score').eq('user_id', user.id)
+  } catch { /* table may not exist yet — migration not run */ }
 
   const profile    = profileRes.data
   const assignment = assignmentRes.data
   const subject    = subjectRes.data
 
-  // Admins can preview any subject even without an assignment
   const isAdmin = profile?.role === 'admin'
   if (!subject) notFound()
   if (!assignment && !isAdmin) notFound()
 
-  const completedIds  = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
-  const passedQuizIds = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
+  const completedIds         = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
+  const passedQuizIds        = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
+  const passedTopicQuizIds   = new Set(
+    (topicQuizCompletions.data ?? []).filter(c => c.passed).map(c => c.topic_id)
+  )
+  const completedTopicQuizIds = new Set(
+    (topicQuizCompletions.data ?? []).map(c => c.topic_id)
+  )
 
   const topics = (subject.topics ?? [])
     .sort((a: any, b: any) => a.order_index - b.order_index)
@@ -76,20 +90,31 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const userName = profile?.full_name ?? 'User'
   const userRole = profile?.role === 'admin' ? 'Administrator' : 'Bookkeeper'
 
-  // Per-topic status
+  // ── Per-topic helpers ────────────────────────────────────────────────────
   function topicStatus(t: any) {
-    const total   = t.steps.length
-    const done    = t.steps.filter((s: any) => completedIds.has(s.id)).length
-    if (total === 0)        return 'empty'
-    if (done === 0)         return 'not_started'
-    if (done < total)       return 'in_progress'
+    const total = t.steps.length
+    const done  = t.steps.filter((s: any) => completedIds.has(s.id)).length
+    if (total === 0)   return 'empty'
+    if (done === 0)    return 'not_started'
+    if (done < total)  return 'in_progress'
     return 'completed'
+  }
+
+  /**
+   * Topic is locked if the previous topic's steps aren't all complete.
+   * Admins always see unlocked so they can preview freely.
+   */
+  function isTopicLocked(index: number): boolean {
+    if (isAdmin || index === 0) return false
+    const prev = topics[index - 1]
+    if (prev.steps.length === 0) return false
+    return !prev.steps.every((s: any) => completedIds.has(s.id))
   }
 
   return (
     <UserClientWrapper userName={userName} userRole={userRole} completionRate={completionRate}>
 
-      {/* ── Trainual-style sub-header ── */}
+      {/* ── Sub-header ── */}
       <div className="flex items-center gap-3 px-6 h-12 border-b border-slate-100 bg-white shrink-0 sticky top-0 z-10">
         <Link
           href="/dashboard"
@@ -99,9 +124,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
         </Link>
 
         <span className="text-slate-300 shrink-0">|</span>
-
         <span className="text-sm font-medium text-slate-700 truncate">{subject.title}</span>
-
         <span className="text-[11px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-full px-2.5 py-0.5 shrink-0">
           Subject
         </span>
@@ -111,16 +134,12 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
         {/* Progress bar */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-slate-400 rounded-full transition-all"
-              style={{ width: `${percent}%` }}
-            />
+            <div className="h-full bg-slate-400 rounded-full transition-all" style={{ width: `${percent}%` }} />
           </div>
           <span className="text-xs text-slate-500 font-medium">{percent}%</span>
         </div>
 
         <span className="text-slate-300 shrink-0">|</span>
-
         <div className="flex items-center gap-1 text-xs text-slate-500 shrink-0">
           <Clock className="w-3.5 h-3.5" />
           {readMins} min read
@@ -140,7 +159,6 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
             {subject.description && (
               <p className="text-slate-500 text-sm mt-1.5">{subject.description}</p>
             )}
-            {/* Owned by */}
             <div className="flex items-center gap-2 mt-3">
               <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
                 {userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
@@ -161,47 +179,100 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
             </div>
           ) : (
             topics.map((topic: any, ti: number) => {
-              const status = topicStatus(topic)
+              const locked    = isTopicLocked(ti)
+              const status    = topicStatus(topic)
               const firstStep = topic.steps[0]
-              const href = firstStep
+              const href      = firstStep
                 ? `/training/${subject.id}/${topic.id}?step=${firstStep.id}`
                 : `/training/${subject.id}/${topic.id}`
+              const hasAiQuiz = !!topic.ai_quiz
+              const quizDone  = completedTopicQuizIds.has(topic.id)
+              const quizPass  = passedTopicQuizIds.has(topic.id)
+              const prevTopic = ti > 0 ? topics[ti - 1] : null
 
-              return (
-                <Link key={topic.id} href={href}>
-                  <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors group ${ti < topics.length - 1 ? 'border-b border-slate-100' : ''}`}>
+              const row = (
+                <div className={cn(
+                  'flex items-center gap-4 px-5 py-4 transition-colors group',
+                  ti < topics.length - 1 ? 'border-b border-slate-100' : '',
+                  locked ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-slate-50'
+                )}>
 
-                    {/* Document badge */}
+                  {/* Badge */}
+                  {locked ? (
+                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                  ) : (
                     <span className="text-[11px] font-medium text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-0.5 shrink-0">
                       Document
                     </span>
+                  )}
 
-                    {/* Title */}
-                    <span className="flex-1 text-sm font-medium text-slate-800 group-hover:text-slate-900 truncate">
+                  {/* Title + lock message */}
+                  <div className="flex-1 min-w-0">
+                    <span className={cn(
+                      'text-sm font-medium truncate block',
+                      locked ? 'text-slate-400' : 'text-slate-800 group-hover:text-slate-900'
+                    )}>
                       {topic.title}
                     </span>
+                    {locked && prevTopic && (
+                      <span className="text-[11px] text-slate-400 truncate block">
+                        Complete &ldquo;{prevTopic.title}&rdquo; first
+                      </span>
+                    )}
+                  </div>
 
-                    {/* Status badge */}
+                  {/* Status badges */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Topic quiz badge */}
+                    {!locked && hasAiQuiz && (
+                      quizDone ? (
+                        <span className={cn(
+                          'flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 border shrink-0',
+                          quizPass
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+                            : 'text-amber-700 bg-amber-50 border-amber-100'
+                        )}>
+                          <Sparkles className="w-2.5 h-2.5" />
+                          {quizPass ? 'Quiz passed' : 'Quiz done'}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-2 py-0.5 shrink-0">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          Quiz ready
+                        </span>
+                      )
+                    )}
+
+                    {/* Step completion badge */}
                     {status === 'completed' && (
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1 shrink-0">
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
                         <CheckCircle2 className="w-3 h-3" /> Completed
                       </span>
                     )}
                     {status === 'in_progress' && (
-                      <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-full px-2.5 py-1 shrink-0">
+                      <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-full px-2.5 py-1">
                         In progress
                       </span>
                     )}
-                    {(status === 'not_started' || status === 'empty') && (
-                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 border border-orange-100 rounded-full px-2.5 py-1 shrink-0">
+                    {!locked && (status === 'not_started' || status === 'empty') && (
+                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 border border-orange-100 rounded-full px-2.5 py-1">
                         Not started
                       </span>
                     )}
 
-                    {/* Arrow */}
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                    {locked ? (
+                      <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
+                    )}
                   </div>
-                </Link>
+                </div>
+              )
+
+              return locked ? (
+                <div key={topic.id}>{row}</div>
+              ) : (
+                <Link key={topic.id} href={href}>{row}</Link>
               )
             })
           )}
