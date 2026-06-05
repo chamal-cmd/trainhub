@@ -3,8 +3,8 @@
 
 @theme {
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-  --color-brand: #4F46E5;
-  --color-brand-dark: #3730A3;
+  --color-brand: #7C3AED;
+  --color-brand-dark: #6D28D9;
   --radius-card: 16px;
 }
 
@@ -43,15 +43,15 @@ body {
 .prose-reader ul, .prose-reader ol { padding-left: 1.5rem; margin-bottom: 1rem; }
 .prose-reader li { margin-bottom: 0.4rem; }
 .prose-reader strong { color: #0f172a; font-weight: 600; }
-.prose-reader a { color: #4F46E5; text-decoration: underline; text-underline-offset: 3px; }
+.prose-reader a { color: #7C3AED; text-decoration: underline; text-underline-offset: 3px; }
 .prose-reader blockquote {
-  border-left: 4px solid #4F46E5; background: #EEF2FF;
+  border-left: 4px solid #7C3AED; background: #F5F3FF;
   border-radius: 0 10px 10px 0; padding: 14px 18px;
-  font-style: normal; color: #3730a3; margin: 1.25rem 0;
+  font-style: normal; color: #6D28D9; margin: 1.25rem 0;
 }
 .prose-reader code {
   background: #f1f5f9; border-radius: 5px;
-  padding: 2px 7px; font-size: 0.875em; color: #4F46E5;
+  padding: 2px 7px; font-size: 0.875em; color: #7C3AED;
   font-family: 'Fira Code', 'Courier New', monospace;
 }
 .prose-reader pre {
@@ -160,11 +160,11 @@ html.dark .shadow-lg                  { box-shadow: 0 8px 24px rgba(0,0,0,0.6) !
 html.dark .shadow-xl                  { box-shadow: 0 12px 32px rgba(0,0,0,0.7) !important; }
 html.dark .shadow-2xl                 { box-shadow: 0 20px 48px rgba(0,0,0,0.8) !important; }
 
-/* Indigo accent — keep vibrant, just slightly soften backgrounds */
-html.dark .bg-indigo-50               { background-color: #1e2a45 !important; }
-html.dark .bg-indigo-100              { background-color: #1e2d57 !important; }
-html.dark .border-indigo-100          { border-color: #2d3d6b !important; }
-html.dark .border-indigo-200          { border-color: #3d4f80 !important; }
+/* Violet accent — keep vibrant in dark mode */
+html.dark .bg-violet-50               { background-color: #2e1a4a !important; }
+html.dark .bg-violet-100              { background-color: #3b1f5c !important; }
+html.dark .border-violet-100          { border-color: #4a2870 !important; }
+html.dark .border-violet-300          { border-color: #5c3384 !important; }
 
 /* Emerald accent */
 html.dark .bg-emerald-50              { background-color: #0d2b22 !important; }

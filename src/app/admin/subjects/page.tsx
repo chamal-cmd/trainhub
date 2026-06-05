@@ -115,7 +115,7 @@ export default function SubjectsPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
+      <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
     </div>
   )
 
@@ -134,7 +134,7 @@ export default function SubjectsPage() {
           </p>
         </div>
         <Link href="/admin/subjects/new">
-          <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+          <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
             <Plus className="w-4 h-4" />
             New Module
           </button>
@@ -157,7 +157,7 @@ export default function SubjectsPage() {
               <div
                 key={subject.id}
                 className={cn(
-                  'bg-white rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
+                  'bg-white rounded-2xl border border-slate-100 hover:border-violet-300 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
                   isDeleting && 'opacity-50 pointer-events-none'
                 )}
                 style={{ animationDelay: `${i * 0.04}s` }}
@@ -175,7 +175,7 @@ export default function SubjectsPage() {
                       {subject.emoji}
                     </div>
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-1">
+                      <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors leading-snug line-clamp-1">
                         {subject.title}
                       </h3>
                       {subject.description ? (
@@ -198,7 +198,7 @@ export default function SubjectsPage() {
                       {stepsCount} step{stepsCount !== 1 ? 's' : ''}
                     </div>
                     {hasQuiz && (
-                      <div className="flex items-center gap-1.5 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-2.5 py-1.5">
+                      <div className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 rounded-lg px-2.5 py-1.5">
                         <HelpCircle className="w-3 h-3" /> Quiz
                       </div>
                     )}
@@ -216,7 +216,7 @@ export default function SubjectsPage() {
                       {timeAgo(subject.updated_at || subject.created_at)}
                     </div>
                     <Link href={`/admin/subjects/${subject.id}`} className="ml-auto">
-                      <div className="flex items-center gap-1 text-xs text-indigo-600 font-semibold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                      <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
                         Edit <ArrowRight className="w-3 h-3" />
                       </div>
                     </Link>
@@ -228,25 +228,25 @@ export default function SubjectsPage() {
 
           {/* Add new card */}
           <Link href="/admin/subjects/new">
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer group flex flex-col items-center justify-center py-12 px-6 min-h-[160px]">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center mb-3 transition-colors">
-                <Plus className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/30 transition-all cursor-pointer group flex flex-col items-center justify-center py-12 px-6 min-h-[160px]">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-violet-100 flex items-center justify-center mb-3 transition-colors">
+                <Plus className="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition-colors" />
               </div>
-              <p className="text-sm font-semibold text-slate-400 group-hover:text-indigo-600 transition-colors">New Module</p>
+              <p className="text-sm font-semibold text-slate-400 group-hover:text-violet-700 transition-colors">New Module</p>
             </div>
           </Link>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-          <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-5">
-            <BookOpen className="w-9 h-9 text-indigo-300" />
+          <div className="w-20 h-20 bg-violet-50 rounded-3xl flex items-center justify-center mb-5">
+            <BookOpen className="w-9 h-9 text-violet-400" />
           </div>
           <h3 className="text-lg font-bold text-slate-700 mb-2">Your library is empty</h3>
           <p className="text-slate-400 text-sm mb-7 text-center max-w-xs">
             Start by creating a training module. Add topics, steps, and a quiz.
           </p>
           <Link href="/admin/subjects/new">
-            <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm">
+            <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm">
               <Plus className="w-4 h-4" /> Create First Module
             </button>
           </Link>

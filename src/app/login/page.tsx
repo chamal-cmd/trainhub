@@ -161,27 +161,27 @@ function LoginPageInner() {
       {/* ── Left: hero panel ── */}
       <div className="hidden lg:flex w-[54%] relative flex-col overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-950" />
-        <div className="absolute top-[-120px] left-[-60px] w-[500px] h-[500px] rounded-full bg-indigo-600/25 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[-120px] left-[-60px] w-[500px] h-[500px] rounded-full bg-violet-700/25 blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-80px] right-[-40px] w-[400px] h-[400px] rounded-full bg-violet-600/20 blur-[80px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-indigo-500/10 blur-[60px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-violet-600/10 blur-[60px] pointer-events-none" />
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.8) 1px,transparent 1px)', backgroundSize: '50px 50px' }} />
 
         <div className="relative z-10 flex flex-col h-full px-14 py-12">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-lg tracking-tight">TrainHub</span>
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full mb-6 w-fit">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-500 uppercase tracking-widest bg-violet-600/10 border border-violet-600/20 px-3 py-1.5 rounded-full mb-6 w-fit">
               <Zap className="w-3 h-3" /> Training Platform
             </span>
             <h1 className="text-[42px] font-extrabold text-white leading-[1.1] tracking-tight mb-5">
               Build a team that<br />
-              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-violet-500 to-violet-400 bg-clip-text text-transparent">
                 actually knows
               </span><br />
               their job.
@@ -191,7 +191,7 @@ function LoginPageInner() {
             </p>
             <div className="flex flex-wrap gap-2">
               {['Rich content editor', 'Video embeds', 'Progress tracking', 'Quiz builder', 'Role-based access', 'Pod teams'].map(f => (
-                <span key={f} className="text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full font-medium">{f}</span>
+                <span key={f} className="text-xs text-violet-400 bg-violet-600/10 border border-violet-600/20 px-3 py-1.5 rounded-full font-medium">{f}</span>
               ))}
             </div>
           </div>
@@ -209,12 +209,12 @@ function LoginPageInner() {
 
       {/* ── Right: form ── */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-indigo-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-violet-500 to-violet-600" />
 
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
           <div className="flex items-center gap-2.5 mb-8 lg:hidden">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-violet-700 flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg text-slate-900">TrainHub</span>
@@ -289,7 +289,7 @@ function LoginPageInner() {
                   type="text" required autoComplete="name"
                   placeholder="Chamal Abeytunga"
                   value={fullName} onChange={e => setFullName(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600 focus:bg-white transition-all"
                 />
               </div>
             )}
@@ -299,14 +299,14 @@ function LoginPageInner() {
                 type="email" required autoComplete="email"
                 placeholder="you@gpbookkeeper.com.au"
                 value={email} onChange={e => setEmail(e.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all"
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 focus:bg-white transition-all"
               />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-medium text-slate-700">Password</label>
                 {mode === 'signin' && (
-                  <a href="/forgot-password" className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors">
+                  <a href="/forgot-password" className="text-xs text-violet-600 hover:text-violet-800 font-medium transition-colors">
                     Forgot password?
                   </a>
                 )}
@@ -316,7 +316,7 @@ function LoginPageInner() {
                   type={showPass ? 'text' : 'password'} required autoComplete="current-password"
                   placeholder="••••••••"
                   value={password} onChange={e => setPassword(e.target.value)}
-                  className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all"
+                  className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 focus:bg-white transition-all"
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -334,7 +334,7 @@ function LoginPageInner() {
 
             <button
               type="submit" disabled={busy}
-              className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold transition-all shadow-sm shadow-indigo-200 disabled:opacity-70 flex items-center justify-center gap-2"
+              className="w-full h-11 rounded-xl bg-violet-700 hover:bg-violet-800 active:bg-violet-900 text-white text-sm font-semibold transition-all shadow-sm shadow-violet-300 disabled:opacity-70 flex items-center justify-center gap-2"
             >
               {loading
                 ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {mode === 'signup' ? 'Creating account…' : 'Signing in…'}</>
@@ -345,13 +345,13 @@ function LoginPageInner() {
           <p className="text-center text-xs text-slate-400 mt-6">
             {mode === 'signin' ? (
               <>New here?{' '}
-                <button onClick={() => setMode('signup')} className="text-indigo-500 font-medium hover:text-indigo-700">
+                <button onClick={() => setMode('signup')} className="text-violet-600 font-medium hover:text-violet-800">
                   Create an account
                 </button>
               </>
             ) : (
               <>Already have an account?{' '}
-                <button onClick={() => setMode('signin')} className="text-indigo-500 font-medium hover:text-indigo-700">
+                <button onClick={() => setMode('signin')} className="text-violet-600 font-medium hover:text-violet-800">
                   Sign in
                 </button>
               </>

@@ -74,7 +74,7 @@ export default async function ReportsPage() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Assignments', value: totalAssignments, icon: BarChart3, color: 'text-indigo-600 bg-indigo-50' },
+          { label: 'Total Assignments', value: totalAssignments, icon: BarChart3, color: 'text-violet-700 bg-violet-50' },
           { label: 'Avg. Completion', value: `${avgProgress}%`, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50' },
           { label: 'Quizzes Passed', value: totalPassed, icon: Award, color: 'text-amber-600 bg-amber-50' },
           { label: 'Active Learners', value: userStats.filter(u => u.completedSteps > 0).length, icon: Users, color: 'text-sky-600 bg-sky-50' },

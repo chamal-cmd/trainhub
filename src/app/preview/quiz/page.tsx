@@ -115,7 +115,7 @@ export default function PreviewQuiz() {
                 <RotateCcw className="w-4 h-4" /> Retake
               </button>
               <Link href="/preview/dashboard" className="flex-1">
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all">
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold transition-all">
                   <Home className="w-4 h-4" /> Dashboard
                 </button>
               </Link>
@@ -131,25 +131,25 @@ export default function PreviewQuiz() {
       <div className="w-full max-w-2xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-indigo-600" />
+            <HelpCircle className="w-5 h-5 text-violet-700" />
             <span className="font-semibold text-slate-700 text-sm">Machine Safety Quiz</span>
           </div>
           <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-full">{idx + 1} / {questions.length}</span>
         </div>
 
         <div className="w-full h-2 bg-slate-200 rounded-full mb-6 overflow-hidden">
-          <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-violet-600 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-7 shadow-sm">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-3">Question {idx + 1}</p>
+          <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-3">Question {idx + 1}</p>
           <h2 className="text-lg font-bold text-slate-900 mb-6">{q.text}</h2>
 
           <div className="space-y-2.5">
             {q.options.map(opt => {
               const isSel = selected === opt.id
-              let cls = 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer'
-              if (isSel && !revealed)            cls = 'border-indigo-500 bg-indigo-50'
+              let cls = 'border-slate-200 bg-slate-50 hover:border-violet-400 hover:bg-violet-50 cursor-pointer'
+              if (isSel && !revealed)            cls = 'border-violet-600 bg-violet-50'
               if (revealed && opt.correct)        cls = 'border-emerald-400 bg-emerald-50 cursor-default'
               if (revealed && isSel && !opt.correct) cls = 'border-red-400 bg-red-50 cursor-default'
               if (revealed && !isSel && !opt.correct) cls = 'border-slate-100 bg-slate-50 opacity-60 cursor-default'
@@ -158,7 +158,7 @@ export default function PreviewQuiz() {
                 <button key={opt.id} onClick={() => !revealed && setSelected(opt.id)} disabled={revealed}
                   className={cn('w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all', cls)}>
                   <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
-                    isSel && !revealed ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300',
+                    isSel && !revealed ? 'border-violet-600 bg-violet-600' : 'border-slate-300',
                     revealed && opt.correct ? 'border-emerald-500 bg-emerald-500' : '',
                     revealed && isSel && !opt.correct ? 'border-red-500 bg-red-500' : '')}>
                     {isSel && !revealed && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -183,12 +183,12 @@ export default function PreviewQuiz() {
           <div className="flex justify-end mt-6 gap-2">
             {!revealed ? (
               <button onClick={confirm} disabled={!selected}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-all shadow-sm">
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-700 hover:bg-violet-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-all shadow-sm">
                 Confirm Answer
               </button>
             ) : (
               <button onClick={next}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-sm">
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold transition-all shadow-sm">
                 {idx < questions.length - 1 ? <>Next Question <ArrowRight className="w-4 h-4" /></> : 'See Results'}
               </button>
             )}

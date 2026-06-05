@@ -28,7 +28,7 @@ interface ToolWithModules extends ToolRow {
 // ── Category badge colours ────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Accounting':         'bg-indigo-50 text-indigo-700',
+  'Accounting':         'bg-violet-50 text-violet-800',
   'Data Capture':       'bg-teal-50 text-teal-700',
   'Reporting':          'bg-blue-50 text-blue-700',
   'Project Management': 'bg-violet-50 text-violet-700',
@@ -114,7 +114,7 @@ function ToolsClient({ tools, loading }: { tools: ToolWithModules[]; loading: bo
           placeholder="Search tools..."
           value={query}
           onChange={e => setQuery(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder:text-slate-400 transition"
+          className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-500 placeholder:text-slate-400 transition"
         />
       </div>
 
@@ -220,7 +220,7 @@ function ToolRow({ tool }: { tool: ToolWithModules }) {
         {tool.moduleCount > 0 ? (
           <Link
             href="/library"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg px-2.5 py-1 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1 transition-colors"
           >
             <BookOpen className="w-3.5 h-3.5" />
             {tool.moduleCount} module{tool.moduleCount !== 1 ? 's' : ''}

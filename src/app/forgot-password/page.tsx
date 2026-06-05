@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md">
+          <div className="w-9 h-9 rounded-xl bg-violet-700 flex items-center justify-center shadow-md">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-lg text-slate-900">TrainHub</span>
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
                 Didn't get it? Check your spam folder or{' '}
                 <button
                   onClick={() => { setSent(false); setEmail('') }}
-                  className="text-indigo-500 hover:text-indigo-700 font-medium"
+                  className="text-violet-600 hover:text-violet-800 font-medium"
                 >
                   try again
                 </button>.
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
                       placeholder="you@gpbookkeeper.com.au"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full h-11 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all"
+                      className="w-full h-11 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 focus:bg-white transition-all"
                     />
                   </div>
                 </div>
@@ -113,7 +113,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !email.trim()}
-                  className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
                 >
                   {loading
                     ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending…</>

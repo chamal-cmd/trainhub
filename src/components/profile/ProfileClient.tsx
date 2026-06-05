@@ -139,7 +139,7 @@ export function ProfileClient({ modules, leaderboard }: Props) {
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => (
                     <button key={i} onClick={() => setPage(i + 1)}
-                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}>
+                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${page === i + 1 ? 'bg-violet-700 text-white' : 'text-slate-600 hover:bg-slate-200'}`}>
                       {i + 1}
                     </button>
                   ))}
@@ -162,7 +162,7 @@ export function ProfileClient({ modules, leaderboard }: Props) {
               <FilterDropdown label="Type" value={typeValue} options={['All content', 'Subject']} onChange={setTypeValue} />
               <button
                 onClick={() => setSearchOpen(v => !v)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${searchOpen ? 'bg-indigo-50 border-indigo-300 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-colors ${searchOpen ? 'bg-violet-50 border-violet-400 text-violet-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
               >
                 <Search className="w-4 h-4" />
               </button>
@@ -174,7 +174,7 @@ export function ProfileClient({ modules, leaderboard }: Props) {
                   autoFocus type="text" placeholder="Search completed…"
                   value={completedSearch}
                   onChange={e => setCompSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 transition"
                 />
               </div>
             )}
@@ -281,14 +281,14 @@ export function ProfileClient({ modules, leaderboard }: Props) {
               {rest.map(entry => (
                 <div
                   key={entry.userId}
-                  className={`flex items-center gap-3 px-2 py-2 rounded-xl transition-colors ${entry.isCurrentUser ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+                  className={`flex items-center gap-3 px-2 py-2 rounded-xl transition-colors ${entry.isCurrentUser ? 'bg-violet-50' : 'hover:bg-slate-50'}`}
                 >
                   <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0">{entry.rank}</span>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${entry.isCurrentUser ? 'bg-indigo-500' : 'bg-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${entry.isCurrentUser ? 'bg-violet-600' : 'bg-slate-400'}`}>
                     {entry.initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs truncate ${entry.isCurrentUser ? 'font-bold text-indigo-700' : 'font-medium text-slate-700'}`}>
+                    <p className={`text-xs truncate ${entry.isCurrentUser ? 'font-bold text-violet-800' : 'font-medium text-slate-700'}`}>
                       {entry.name}
                     </p>
                     <p className="text-[10px] text-slate-400">{entry.stepsCompleted} steps</p>
@@ -300,14 +300,14 @@ export function ProfileClient({ modules, leaderboard }: Props) {
             {/* Current user's rank if they're outside top visible */}
             {currentEntry && currentEntry.rank > 3 + rest.length && (
               <div className="mt-3 border-t border-slate-100 pt-3">
-                <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-indigo-50">
-                  <span className="text-xs font-bold text-indigo-400 w-5 text-center shrink-0">{currentEntry.rank}</span>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-indigo-500 shrink-0">
+                <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-violet-50">
+                  <span className="text-xs font-bold text-violet-500 w-5 text-center shrink-0">{currentEntry.rank}</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-violet-600 shrink-0">
                     {currentEntry.initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-indigo-700 truncate">You</p>
-                    <p className="text-[10px] text-indigo-400">{currentEntry.stepsCompleted} steps</p>
+                    <p className="text-xs font-bold text-violet-800 truncate">You</p>
+                    <p className="text-[10px] text-violet-500">{currentEntry.stepsCompleted} steps</p>
                   </div>
                 </div>
               </div>
@@ -332,7 +332,7 @@ function FilterDropdown({ label, value, options, onChange }: {
         className="flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
       >
         <span className="text-slate-500">{label}:</span>
-        <span className="font-semibold text-indigo-600">{value}</span>
+        <span className="font-semibold text-violet-700">{value}</span>
         <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
       </button>
       {open && (
@@ -341,7 +341,7 @@ function FilterDropdown({ label, value, options, onChange }: {
           <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-20 min-w-[140px] py-1">
             {options.map(opt => (
               <button key={opt} onClick={() => { onChange(opt); setOpen(false) }}
-                className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors ${opt === value ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}>
+                className={`w-full text-left px-4 py-2 text-xs hover:bg-slate-50 transition-colors ${opt === value ? 'font-semibold text-violet-700' : 'text-slate-700'}`}>
                 {opt}
               </button>
             ))}

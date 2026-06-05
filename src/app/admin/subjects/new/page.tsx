@@ -117,7 +117,7 @@ export default function NewSubjectPage() {
                 type="button"
                 onClick={() => setEmoji(e)}
                 className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
-                  emoji === e ? 'bg-indigo-100 ring-2 ring-indigo-500' : 'bg-slate-100 hover:bg-slate-200'
+                  emoji === e ? 'bg-violet-100 ring-2 ring-violet-600' : 'bg-slate-100 hover:bg-slate-200'
                 }`}
               >
                 {e}
@@ -151,11 +151,11 @@ export default function NewSubjectPage() {
               onClick={() => setVisibility('everyone')}
               className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
                 visibility === 'everyone'
-                  ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                  ? 'border-violet-600 bg-violet-50 ring-1 ring-violet-600'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
               }`}
             >
-              <Globe className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'everyone' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <Globe className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'everyone' ? 'text-violet-700' : 'text-slate-400'}`} />
               <div>
                 <p className="text-sm font-semibold text-slate-800">Everyone</p>
                 <p className="text-xs text-slate-400 mt-0.5">All team members are assigned automatically</p>
@@ -167,11 +167,11 @@ export default function NewSubjectPage() {
               onClick={() => setVisibility('specific')}
               className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
                 visibility === 'specific'
-                  ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                  ? 'border-violet-600 bg-violet-50 ring-1 ring-violet-600'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
               }`}
             >
-              <Lock className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'specific' ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <Lock className={`w-5 h-5 shrink-0 mt-0.5 ${visibility === 'specific' ? 'text-violet-700' : 'text-slate-400'}`} />
               <div>
                 <p className="text-sm font-semibold text-slate-800">Specific people</p>
                 <p className="text-xs text-slate-400 mt-0.5">Only people you pick can see it (client-specific)</p>
@@ -179,7 +179,7 @@ export default function NewSubjectPage() {
             </button>
           </div>
           {visibility === 'specific' && (
-            <p className="text-xs text-indigo-500">You&apos;ll choose who has access on the next screen.</p>
+            <p className="text-xs text-violet-600">You&apos;ll choose who has access on the next screen.</p>
           )}
         </div>
 

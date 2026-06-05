@@ -115,7 +115,7 @@ function ModuleCard({ m }: { m: any }) {
               {subject.emoji ?? '📖'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800 group-hover:text-indigo-700 transition-colors leading-snug line-clamp-2">
+              <p className="text-sm font-bold text-slate-800 group-hover:text-violet-800 transition-colors leading-snug line-clamp-2">
                 {subject.title}
               </p>
               {subject.description && (

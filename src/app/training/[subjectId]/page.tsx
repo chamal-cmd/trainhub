@@ -1,300 +1,249 @@
-// Auth-gated page — must always be dynamic
+'use client'
+
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+// ── Imports ───────────────────────────────────────────────────────────────────
+
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
-import {
-  ArrowLeft, CheckCircle2, HelpCircle, ChevronRight,
-  FileText, Clock, BookOpen, Lock, Sparkles
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Search, ExternalLink, BookOpen } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
-type PageParams = { params: Promise<{ subjectId: string }> }
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-export default async function TrainingSubjectPage({ params }: PageParams) {
-  const { subjectId } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+interface ToolRow {
+  id: string
+  name: string
+  description: string | null
+  emoji: string
+  category: string
+  website_url: string | null
+  created_at: string
+}
 
-  const [
-    profileRes,
-    assignmentRes,
-    subjectRes,
-    stepProgressRes,
-    allAssignmentsRes,
-  ] = await Promise.all([
-    supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
-    supabase.from('assignments').select('id, due_date').eq('subject_id', subjectId).eq('user_id', user.id).single(),
-    supabase
-      .from('subjects')
-      .select(`id, title, description, emoji, cover_color,
-        topics(id, title, order_index,
-          steps(id, title, order_index)),
-        quizzes(id, title, passing_score)`)
-      .eq('id', subjectId)
-      .single(),
-    supabase.from('step_progress').select('step_id').eq('user_id', user.id),
-    supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
-  ])
+interface ToolWithModules extends ToolRow {
+  moduleCount: number
+}
 
-  // quiz_attempts & topic completions fetched separately (tables may not exist yet)
-  let quizAttemptsRes: { data: any[] | null } = { data: [] }
-  let topicQuizRes:    { data: any[] | null } = { data: [] }
-  try {
-    quizAttemptsRes = await supabase
-      .from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
-  } catch { /* table may not exist */ }
-  try {
-    topicQuizRes = await supabase
-      .from('topic_quiz_completions').select('topic_id, passed').eq('user_id', user.id)
-  } catch { /* table may not exist yet — run migration SQL first */ }
+// ── Category badge colours ────────────────────────────────────────────────────
 
-  const profile    = profileRes.data
-  const assignment = assignmentRes.data
-  const subject    = subjectRes.data
+const CATEGORY_COLORS: Record<string, string> = {
+  'Accounting':         'bg-violet-50 text-violet-800',
+  'Data Capture':       'bg-teal-50 text-teal-700',
+  'Reporting':          'bg-blue-50 text-blue-700',
+  'Project Management': 'bg-violet-50 text-violet-700',
+  'Communication':      'bg-amber-50 text-amber-700',
+  'Productivity':       'bg-emerald-50 text-emerald-700',
+  'General':            'bg-slate-100 text-slate-600',
+}
 
-  const isAdmin = profile?.role === 'admin'
-  if (!subject) notFound()
-  if (!assignment && !isAdmin) notFound()
+// ── Page (default export) ─────────────────────────────────────────────────────
 
-  const completedIds       = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
-  const passedQuizIds      = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
-  const passedTopicQuizIds = new Set(topicQuizRes.data?.filter(r => r.passed).map(r => r.topic_id) ?? [])
+export default function ToolsPage() {
+  const [tools, setTools]     = useState<ToolWithModules[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const topics = (subject.topics ?? [])
-    .sort((a: any, b: any) => a.order_index - b.order_index)
-    .map((t: any) => ({ ...t, steps: (t.steps ?? []).sort((a: any, b: any) => a.order_index - b.order_index) }))
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const [toolsRes, subjectsRes] = await Promise.all([
+        supabase.from('tools').select('*').order('name'),
+        supabase.from('subjects').select('id, title'),
+      ])
 
-  const allStepIds     = topics.flatMap((t: any) => t.steps.map((s: any) => s.id))
-  const completedCount = allStepIds.filter(id => completedIds.has(id)).length
-  const totalCount     = allStepIds.length
-  const percent        = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
-  const readMins       = Math.max(2, topics.reduce((acc: number, t: any) => acc + Math.max(2, t.steps.length * 3), 0))
-  const quiz           = (subject.quizzes as any[])?.[0]
-  const quizPassed     = quiz ? passedQuizIds.has(quiz.id) : false
+      const rawTools: ToolRow[]   = toolsRes.data  ?? []
+      const subjects: any[]       = subjectsRes.data ?? []
 
-  const allIds: string[] = (allAssignmentsRes.data ?? []).flatMap((a: any) =>
-    (a.subjects as any)?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
-  )
-  const completionRate = allIds.length > 0
-    ? Math.round((allIds.filter(id => completedIds.has(id)).length / allIds.length) * 100)
-    : 0
+      const annotated: ToolWithModules[] = rawTools.map(tool => {
+        const keyword     = tool.name.toLowerCase()
+        const moduleCount = subjects.filter((s: any) =>
+          (s.title as string).toLowerCase().includes(keyword)
+        ).length
+        return { ...tool, moduleCount }
+      })
 
-  const userName = profile?.full_name ?? 'User'
-  const userRole = profile?.role === 'admin' ? 'Administrator' : 'Bookkeeper'
+      setTools(annotated)
+      setLoading(false)
+    }
+    load()
+  }, [])
 
-  // ── Per-topic helpers ────────────────────────────────────────────────────
-  function topicStatus(t: any) {
-    const total = t.steps.length
-    const done  = t.steps.filter((s: any) => completedIds.has(s.id)).length
-    if (total === 0)   return 'empty'
-    if (done === 0)    return 'not_started'
-    if (done < total)  return 'in_progress'
-    // All steps done — check if the knowledge-check quiz was passed
-    if (!passedTopicQuizIds.has(t.id)) return 'quiz_pending'
-    return 'completed'
-  }
+  return <ToolsClient tools={tools} loading={loading} />
+}
 
-  /**
-   * Topic is locked until the PREVIOUS topic's quiz has been passed.
-   * Admins always see unlocked so they can preview freely.
-   */
-  function isTopicLocked(index: number): boolean {
-    if (isAdmin || index === 0) return false
-    const prev = topics[index - 1]
-    if (prev.steps.length === 0) return false
-    // Must pass the previous topic's knowledge-check quiz to unlock
-    return !passedTopicQuizIds.has(prev.id)
-  }
+// ── ToolsClient (search/filter UI) ───────────────────────────────────────────
 
-  /**
-   * Human-readable reason why a topic is locked —
-   * distinguishes "steps not done" from "quiz not passed".
-   */
-  function topicLockReason(index: number): string {
-    if (index === 0) return ''
-    const prev = topics[index - 1]
-    const prevStepsDone = prev.steps.length > 0 &&
-      prev.steps.every((s: any) => completedIds.has(s.id))
-    if (!prevStepsDone) return `Complete "${prev.title}" first`
-    return `Pass the quiz in "${prev.title}" to unlock`
-  }
+function ToolsClient({ tools, loading }: { tools: ToolWithModules[]; loading: boolean }) {
+  const [query, setQuery] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return tools
+    const q = query.toLowerCase()
+    return tools.filter(t =>
+      t.name.toLowerCase().includes(q) ||
+      (t.description ?? '').toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q)
+    )
+  }, [tools, query])
+
+  const categories = useMemo(() => {
+    const map = new Map<string, ToolWithModules[]>()
+    for (const tool of filtered) {
+      if (!map.has(tool.category)) map.set(tool.category, [])
+      map.get(tool.category)!.push(tool)
+    }
+    return map
+  }, [filtered])
 
   return (
-    <UserClientWrapper userName={userName} userRole={userRole} completionRate={completionRate}>
+    <div className="px-8 py-7 min-h-full bg-[#f8f8f8]">
 
-      {/* ── Sub-header ── */}
-      <div className="flex items-center gap-3 px-6 h-12 border-b border-slate-100 bg-white shrink-0 sticky top-0 z-10">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors bg-white border border-slate-200 hover:border-slate-300 rounded-lg px-3 py-1.5 font-medium shrink-0"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
-        </Link>
-
-        <span className="text-slate-300 shrink-0">|</span>
-        <span className="text-sm font-medium text-slate-700 truncate">{subject.title}</span>
-        <span className="text-[11px] font-semibold bg-white border border-slate-200 text-slate-600 rounded-full px-2.5 py-0.5 shrink-0">
-          Subject
-        </span>
-
-        <div className="flex-1" />
-
-        {/* Progress bar */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-slate-400 rounded-full transition-all" style={{ width: `${percent}%` }} />
-          </div>
-          <span className="text-xs text-slate-500 font-medium">{percent}%</span>
-        </div>
-
-        <span className="text-slate-300 shrink-0">|</span>
-        <div className="flex items-center gap-1 text-xs text-slate-500 shrink-0">
-          <Clock className="w-3.5 h-3.5" />
-          {readMins} min read
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Software &amp; tools</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Get visibility into the software and tools your team relies on.
+        </p>
       </div>
 
-      {/* ── Main content ── */}
-      <div className="max-w-3xl mx-auto px-8 py-10">
+      {/* Search */}
+      <div className="relative mb-7 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search tools..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-violet-500 placeholder:text-slate-400 transition"
+        />
+      </div>
 
-        {/* Subject title block */}
-        <div className="flex items-start gap-4 mb-8">
-          <div className="w-10 h-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center shrink-0 mt-0.5">
-            <FileText className="w-5 h-5 text-slate-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 leading-tight">{subject.title}</h1>
-            {subject.description && (
-              <p className="text-slate-500 text-sm mt-1.5">{subject.description}</p>
-            )}
-            <div className="flex items-center gap-2 mt-3">
-              <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                {userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
-              </div>
-              <span className="text-xs text-slate-500 bg-white border border-slate-200 rounded-full px-3 py-1">
-                Owned by {userName}
-              </span>
-            </div>
-          </div>
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="space-y-4">
+          {[1, 2].map(i => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm h-40 animate-pulse" />
+          ))}
         </div>
+      )}
 
-        {/* ── Topics list ── */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-6">
-          {topics.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <BookOpen className="w-8 h-8 text-slate-200 mb-2" />
-              <p className="text-slate-400 text-sm">No topics yet.</p>
-            </div>
-          ) : (
-            topics.map((topic: any, ti: number) => {
-              const locked    = isTopicLocked(ti)
-              const status    = topicStatus(topic)
-              const firstStep = topic.steps[0]
-              const href      = firstStep
-                ? `/training/${subject.id}/${topic.id}?step=${firstStep.id}`
-                : `/training/${subject.id}/${topic.id}`
-              const prevTopic = ti > 0 ? topics[ti - 1] : null
-
-              const row = (
-                <div className={cn(
-                  'flex items-center gap-4 px-5 py-4 transition-colors group',
-                  ti < topics.length - 1 ? 'border-b border-slate-100' : '',
-                  locked ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-slate-50'
-                )}>
-
-                  {/* Badge */}
-                  {locked ? (
-                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
-                  ) : (
-                    <span className="text-[11px] font-medium text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-0.5 shrink-0">
-                      Document
-                    </span>
-                  )}
-
-                  {/* Title + lock message */}
-                  <div className="flex-1 min-w-0">
-                    <span className={cn(
-                      'text-sm font-medium truncate block',
-                      locked ? 'text-slate-400' : 'text-slate-800 group-hover:text-slate-900'
-                    )}>
-                      {topic.title}
-                    </span>
-                    {locked && (
-                      <span className="text-[11px] text-slate-400 truncate block">
-                        {topicLockReason(ti)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Status badges */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {status === 'completed' && (
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
-                        <CheckCircle2 className="w-3 h-3" /> Completed
-                      </span>
-                    )}
-                    {status === 'quiz_pending' && (
-                      <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
-                        <Sparkles className="w-3 h-3" /> Take quiz
-                      </span>
-                    )}
-                    {status === 'in_progress' && (
-                      <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-full px-2.5 py-1">
-                        In progress
-                      </span>
-                    )}
-                    {!locked && (status === 'not_started' || status === 'empty') && (
-                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 border border-orange-100 rounded-full px-2.5 py-1">
-                        Not started
-                      </span>
-                    )}
-
-                    {locked ? (
-                      <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-                    )}
-                  </div>
-                </div>
-              )
-
-              return locked ? (
-                <div key={topic.id}>{row}</div>
-              ) : (
-                <Link key={topic.id} href={href}>{row}</Link>
-              )
-            })
+      {/* Empty state (no results from filter) */}
+      {!loading && filtered.length === 0 && (
+        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center py-24">
+          <BookOpen className="w-9 h-9 text-slate-300 mb-3" />
+          <p className="text-sm font-semibold text-slate-500">
+            {tools.length === 0 ? 'No tools found in the database.' : 'No tools match your search.'}
+          </p>
+          {tools.length === 0 && (
+            <p className="text-xs text-slate-400 mt-1">Run <code className="bg-slate-100 rounded px-1">scripts/seed-tools.sql</code> to populate the tools table.</p>
+          )}
+          {tools.length > 0 && (
+            <p className="text-xs text-slate-400 mt-1">Try a different search term.</p>
           )}
         </div>
+      )}
 
-        {/* ── Quiz section ── */}
-        {quiz && (
-          <div className={`rounded-xl border-2 p-5 ${quizPassed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-indigo-50'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${quizPassed ? 'bg-emerald-100' : 'bg-indigo-100'}`}>
-                  {quizPassed ? '🏆' : <HelpCircle className="w-5 h-5 text-indigo-600" />}
-                </div>
-                <div>
-                  <p className={`font-semibold text-sm ${quizPassed ? 'text-emerald-800' : 'text-indigo-800'}`}>{quiz.title}</p>
-                  <p className={`text-xs ${quizPassed ? 'text-emerald-600' : 'text-indigo-500'}`}>
-                    {quizPassed ? 'Quiz completed — well done!' : `Passing score: ${quiz.passing_score}%`}
-                  </p>
-                </div>
-              </div>
-              <Link href={`/quiz/${quiz.id}`}>
-                <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${quizPassed ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                  {quizPassed ? 'Retake Quiz' : 'Take Quiz'}
-                </button>
-              </Link>
-            </div>
+      {/* Grouped tool tables */}
+      {!loading && filtered.length > 0 && Array.from(categories.entries()).map(([category, categoryTools]) => (
+        <div key={category} className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wide">{category}</h2>
+            <span className="text-xs text-slate-400 font-medium bg-slate-100 rounded-full px-2 py-0.5">
+              {categoryTools.length}
+            </span>
           </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">
+                    Tool
+                  </th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">
+                    Category
+                  </th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">
+                    Modules
+                  </th>
+                  <th className="px-5 py-3 w-10" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {categoryTools.map(tool => (
+                  <ToolRow key={tool.id} tool={tool} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Tool table row ────────────────────────────────────────────────────────────
+
+function ToolRow({ tool }: { tool: ToolWithModules }) {
+  const badgeClass = CATEGORY_COLORS[tool.category] ?? CATEGORY_COLORS['General']
+
+  return (
+    <tr className="group hover:bg-slate-50 transition-colors">
+      {/* Name + description */}
+      <td className="px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-lg shrink-0">
+            {tool.emoji}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-800 leading-snug">
+              {tool.name}
+            </p>
+            {tool.description && (
+              <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 max-w-xs">
+                {tool.description}
+              </p>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* Category badge */}
+      <td className="px-5 py-3.5 hidden sm:table-cell">
+        <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${badgeClass}`}>
+          {tool.category}
+        </span>
+      </td>
+
+      {/* Related modules */}
+      <td className="px-5 py-3.5">
+        {tool.moduleCount > 0 ? (
+          <Link
+            href="/library"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1 transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            {tool.moduleCount} module{tool.moduleCount !== 1 ? 's' : ''}
+          </Link>
+        ) : (
+          <span className="text-xs text-slate-400">—</span>
         )}
-      </div>
-    </UserClientWrapper>
+      </td>
+
+      {/* External link */}
+      <td className="px-5 py-3.5 text-right">
+        {tool.website_url && (
+          <a
+            href={tool.website_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100"
+            title={`Open ${tool.name}`}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+      </td>
+    </tr>
   )
 }

@@ -137,8 +137,8 @@ export default function TopicQuizModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <Brain className="w-4 h-4 text-indigo-600" />
+            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+              <Brain className="w-4 h-4 text-violet-700" />
             </div>
             <div>
               <p className="text-xs text-slate-400 font-medium">Knowledge Check</p>
@@ -164,14 +164,14 @@ export default function TopicQuizModal({
               </>
             ) : (
               <>
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-indigo-500 animate-pulse" />
+                <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-violet-600 animate-pulse" />
                 </div>
                 <div className="text-center">
                   <p className="text-slate-800 font-medium text-sm">Generating your quiz…</p>
                   <p className="text-slate-400 text-xs mt-1">AI is reading the content</p>
                 </div>
-                <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
               </>
             )}
           </div>
@@ -184,7 +184,7 @@ export default function TopicQuizModal({
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  className="h-full bg-violet-600 rounded-full transition-all duration-500"
                   style={{ width: `${((currentQ) / total) * 100}%` }}
                 />
               </div>
@@ -195,7 +195,7 @@ export default function TopicQuizModal({
 
             {/* Question */}
             <div>
-              <span className="inline-block text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full mb-3">
+              <span className="inline-block text-xs font-semibold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-full mb-3">
                 Question {currentQ + 1}
               </span>
               <h2 className="text-slate-900 font-semibold text-base leading-snug">
@@ -216,8 +216,8 @@ export default function TopicQuizModal({
                     disabled={confirmed}
                     className={cn(
                       'flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-xl border-2 text-sm font-medium transition-all duration-150',
-                      !confirmed && !isSelected && 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-slate-700',
-                      !confirmed &&  isSelected && 'border-indigo-500 bg-indigo-50 text-indigo-800',
+                      !confirmed && !isSelected && 'border-slate-200 hover:border-violet-400 hover:bg-violet-50/50 text-slate-700',
+                      !confirmed &&  isSelected && 'border-violet-600 bg-violet-50 text-violet-900',
                       showCorrect  && 'border-emerald-400 bg-emerald-50 text-emerald-800',
                       showWrong    && 'border-red-400 bg-red-50 text-red-800',
                       confirmed && !showCorrect && !showWrong && 'border-slate-100 text-slate-400 opacity-60',
@@ -226,7 +226,7 @@ export default function TopicQuizModal({
                     <span className={cn(
                       'w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 transition-colors',
                       !confirmed && !isSelected && 'border-slate-300 text-slate-400',
-                      !confirmed &&  isSelected && 'border-indigo-500 text-indigo-600 bg-indigo-100',
+                      !confirmed &&  isSelected && 'border-violet-600 text-violet-700 bg-violet-100',
                       showCorrect && 'border-emerald-500 bg-emerald-500',
                       showWrong   && 'border-red-500 bg-red-500',
                     )}>

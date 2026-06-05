@@ -48,7 +48,7 @@ export function UserNarrowSidebar() {
             className={cn(
               'w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-all group',
               active
-                ? 'bg-indigo-600 shadow-sm shadow-indigo-200'
+                ? 'bg-violet-700 shadow-sm shadow-violet-200'
                 : 'hover:bg-slate-100 cursor-pointer'
             )}
           >

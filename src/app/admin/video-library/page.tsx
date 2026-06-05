@@ -148,7 +148,7 @@ export default function VideoLibraryPage() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-[22px] font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Film className="w-6 h-6 text-indigo-500" />
+            <Film className="w-6 h-6 text-violet-600" />
             Video Library
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
@@ -173,7 +173,7 @@ export default function VideoLibraryPage() {
             placeholder="Search videos or modules…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 h-9 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full pl-9 pr-4 h-9 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
 
@@ -185,7 +185,7 @@ export default function VideoLibraryPage() {
               onClick={() => setFilter(tab.key)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                 filter === tab.key
-                  ? 'bg-white text-indigo-700 shadow-sm'
+                  ? 'bg-white text-violet-800 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -198,7 +198,7 @@ export default function VideoLibraryPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
         </div>
       ) : steps.length === 0 ? (
         <EmptyState />
@@ -217,7 +217,7 @@ export default function VideoLibraryPage() {
                 <span className="text-lg">{subject?.emoji}</span>
                 <Link
                   href={`/admin/subjects/${subject?.id}`}
-                  className="font-bold text-slate-800 text-sm hover:text-indigo-600 transition-colors"
+                  className="font-bold text-slate-800 text-sm hover:text-violet-700 transition-colors"
                 >
                   {subject?.title}
                 </Link>
@@ -233,8 +233,8 @@ export default function VideoLibraryPage() {
                   return (
                     <div key={step.id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/70 transition-colors">
                       {/* Icon */}
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-                        <Play className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500" />
+                      <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                        <Play className="w-3.5 h-3.5 text-violet-600 fill-violet-600" />
                       </div>
 
                       {/* Info */}
@@ -263,7 +263,7 @@ export default function VideoLibraryPage() {
                       {/* Edit link */}
                       <Link
                         href={`/admin/subjects/${subject?.id}`}
-                        className="flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
+                        className="flex items-center gap-1 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
                       >
                         <ExternalLink className="w-3 h-3" /> Edit
                       </Link>
@@ -278,9 +278,9 @@ export default function VideoLibraryPage() {
 
       {/* Guide callout */}
       {!loading && steps.length > 0 && (
-        <div className="mt-8 bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+        <div className="mt-8 bg-violet-50 border border-violet-100 rounded-2xl p-5">
           <h3 className="text-sm font-bold text-indigo-900 mb-1.5">Adding new videos</h3>
-          <p className="text-xs text-indigo-700 leading-relaxed">
+          <p className="text-xs text-violet-800 leading-relaxed">
             Open any step → click the <strong>🎬 video button</strong> in the toolbar → paste a URL.
             Supports <strong>Loom</strong>, <strong>YouTube</strong>, <strong>Tango</strong> (free), <strong>Scribe</strong>, and <strong>Google Drive</strong> links.
             Videos appear embedded inline so learners never leave the platform.
@@ -294,8 +294,8 @@ export default function VideoLibraryPage() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-      <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
-        <Film className="w-7 h-7 text-indigo-300" />
+      <div className="w-16 h-16 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
+        <Film className="w-7 h-7 text-violet-400" />
       </div>
       <h3 className="text-base font-bold text-slate-700 mb-1.5">No videos embedded yet</h3>
       <p className="text-slate-400 text-sm text-center max-w-sm leading-relaxed">

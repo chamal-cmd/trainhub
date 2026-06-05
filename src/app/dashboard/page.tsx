@@ -241,7 +241,7 @@ export default async function UserDashboard() {
                   <Wrench className="w-3.5 h-3.5 text-slate-400" />
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Software &amp; Tools</p>
                 </div>
-                <Link href="/tools" className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors">
+                <Link href="/tools" className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 transition-colors">
                   View all
                 </Link>
               </div>

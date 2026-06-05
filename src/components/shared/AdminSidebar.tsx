@@ -80,12 +80,12 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
       {/* Logo */}
       <div className="px-5 h-16 flex items-center border-b border-white/[0.07]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md">
+          <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-md">
             <GraduationCap className="w-4 h-4 text-white" />
           </div>
           <div>
             <p className="text-white font-semibold text-sm leading-none">TrainHub</p>
-            <p className="text-indigo-400 text-[10px] mt-0.5 leading-none">Admin Portal</p>
+            <p className="text-violet-500 text-[10px] mt-0.5 leading-none">Admin Portal</p>
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
       <nav className="flex-1 px-2 pt-4 space-y-5 overflow-y-auto">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-indigo-400/50 uppercase tracking-widest">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-violet-500/50 uppercase tracking-widest">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -107,14 +107,14 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
                     className={cn(
                       'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                       active
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/50'
-                        : 'text-indigo-200/80 hover:bg-white/[0.07] hover:text-white'
+                        ? 'bg-violet-700 text-white shadow-md shadow-indigo-900/50'
+                        : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'
                     )}
                   >
                     <item.icon
                       className={cn(
                         'w-4 h-4 shrink-0 transition-transform group-hover:scale-110',
-                        active ? 'text-white' : 'text-indigo-300/70'
+                        active ? 'text-white' : 'text-violet-400/70'
                       )}
                     />
                     <span className="flex-1 tracking-tight">{item.label}</span>
@@ -131,19 +131,19 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
       <div className="p-3 border-t border-white/[0.07]">
         {userName && (
           <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-lg bg-white/[0.04]">
-            <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
+            <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate">{userName}</p>
-              {userEmail && <p className="text-[10px] text-indigo-300/60 truncate">{userEmail}</p>}
+              {userEmail && <p className="text-[10px] text-violet-400/60 truncate">{userEmail}</p>}
             </div>
           </div>
         )}
 
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-indigo-300/70 hover:bg-white/[0.07] hover:text-white transition-all"
+          className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-violet-400/70 hover:bg-white/[0.07] hover:text-white transition-all"
         >
           <LogOut className="w-4 h-4" />
           Sign out

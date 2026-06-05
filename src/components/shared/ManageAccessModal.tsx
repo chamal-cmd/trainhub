@@ -90,7 +90,7 @@ export function ManageAccessModal({ subjectId, subjectTitle, onClose }: Props) {
           <div className="flex items-start justify-between p-5 border-b border-slate-100 shrink-0">
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <Users className="w-4 h-4 text-indigo-500" />
+                <Users className="w-4 h-4 text-violet-600" />
                 <h2 className="text-base font-bold text-slate-900">Manage Access</h2>
               </div>
               <p className="text-xs text-slate-400 ml-6">{subjectTitle}</p>
@@ -108,7 +108,7 @@ export function ManageAccessModal({ subjectId, subjectTitle, onClose }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={assignAll}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                className="text-xs font-semibold text-violet-700 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-2.5 py-1 rounded-lg transition-colors"
               >
                 Assign all
               </button>
@@ -125,7 +125,7 @@ export function ManageAccessModal({ subjectId, subjectTitle, onClose }: Props) {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
               </div>
             ) : (
               <>
@@ -172,7 +172,7 @@ export function ManageAccessModal({ subjectId, subjectTitle, onClose }: Props) {
           <div className="px-5 py-3 border-t border-slate-100 shrink-0">
             <button
               onClick={onClose}
-              className="w-full h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors"
+              className="w-full h-9 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold transition-colors"
             >
               Done
             </button>
@@ -194,8 +194,8 @@ function UserRow({ profile, hasAccess, toggling, onToggle }: {
   return (
     <div className="flex items-center gap-3 px-5 py-2.5 hover:bg-slate-50 transition-colors">
       {/* Avatar */}
-      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-        <span className="text-xs font-bold text-indigo-600">{initials}</span>
+      <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+        <span className="text-xs font-bold text-violet-700">{initials}</span>
       </div>
 
       {/* Name + email */}
@@ -211,7 +211,7 @@ function UserRow({ profile, hasAccess, toggling, onToggle }: {
         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
           hasAccess
             ? 'bg-emerald-50 text-emerald-600 hover:bg-red-50 hover:text-red-500'
-            : 'bg-slate-100 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600'
+            : 'bg-slate-100 text-slate-400 hover:bg-violet-50 hover:text-violet-700'
         } disabled:opacity-50`}
       >
         {toggling ? (

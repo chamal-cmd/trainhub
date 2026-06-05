@@ -48,14 +48,14 @@ function WelcomeInner() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-950 flex items-center justify-center p-6">
       {/* Background glow */}
-      <div className="absolute top-[-100px] left-[-60px] w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-100px] left-[-60px] w-[500px] h-[500px] rounded-full bg-violet-700/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-60px] right-[-40px] w-[400px] h-[400px] rounded-full bg-violet-600/15 blur-[100px] pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-md">
 
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <span className="text-white font-bold text-xl tracking-tight">TrainHub</span>
@@ -67,7 +67,7 @@ function WelcomeInner() {
           {step === 'welcome' && (
             <div className="p-8">
               <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full mb-5 ${
-                isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'
+                isAdmin ? 'bg-purple-100 text-purple-700' : 'bg-violet-100 text-violet-800'
               }`}>
                 {isAdmin ? '🛡️ Admin Account' : '👤 Team Member Account'}
               </div>
@@ -85,12 +85,12 @@ function WelcomeInner() {
               <div className={`rounded-xl p-4 mb-6 border ${
                 isAdmin
                   ? 'bg-purple-50 border-purple-100'
-                  : 'bg-indigo-50 border-indigo-100'
+                  : 'bg-violet-50 border-violet-100'
               }`}>
-                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isAdmin ? 'text-purple-600' : 'text-indigo-600'}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isAdmin ? 'text-purple-600' : 'text-violet-700'}`}>
                   Your access
                 </p>
-                <ul className={`space-y-1.5 text-sm ${isAdmin ? 'text-purple-800' : 'text-indigo-800'}`}>
+                <ul className={`space-y-1.5 text-sm ${isAdmin ? 'text-purple-800' : 'text-violet-900'}`}>
                   {isAdmin ? (
                     <>
                       <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5" /> Manage all training modules</li>
@@ -114,7 +114,7 @@ function WelcomeInner() {
                 className={`w-full h-11 rounded-xl text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                   isAdmin
                     ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-indigo-600 hover:bg-indigo-700'
+                    : 'bg-violet-700 hover:bg-violet-800'
                 }`}
               >
                 Set up my password <ArrowRight className="w-4 h-4" />
@@ -142,7 +142,7 @@ function WelcomeInner() {
                       placeholder="Min. 8 characters"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                      className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600 focus:bg-white transition-all"
                     />
                     <button type="button" onClick={() => setShowPass(v => !v)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -171,7 +171,7 @@ function WelcomeInner() {
                     placeholder="Repeat your password"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
-                    className={`w-full h-11 px-4 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all ${
+                    className={`w-full h-11 px-4 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:bg-white transition-all ${
                       confirm && confirm !== password ? 'border-red-300' : 'border-slate-200'
                     }`}
                   />
@@ -186,7 +186,7 @@ function WelcomeInner() {
                   type="submit"
                   disabled={loading || !password || !confirm}
                   className={`w-full h-11 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${
-                    isAdmin ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                    isAdmin ? 'bg-purple-600 hover:bg-purple-700' : 'bg-violet-700 hover:bg-violet-800'
                   }`}
                 >
                   {loading
@@ -208,7 +208,7 @@ function WelcomeInner() {
                 Taking you to your {isAdmin ? 'admin portal' : 'dashboard'}…
               </p>
               <div className="mt-4 flex justify-center">
-                <span className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                <span className="w-5 h-5 border-2 border-violet-300 border-t-violet-700 rounded-full animate-spin" />
               </div>
             </div>
           )}

@@ -115,7 +115,7 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
             <Link
               href="/admin"
               title="Switch to Admin View"
-              className="flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors ml-1 shrink-0"
+              className="flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-violet-700 text-white hover:bg-violet-800 transition-colors ml-1 shrink-0"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               Admin View
@@ -126,7 +126,7 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
           <div className="relative ml-1" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(v => !v)}
-              className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-indigo-300 transition-all"
+              className="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-violet-300 transition-all"
             >
               {initials}
             </button>

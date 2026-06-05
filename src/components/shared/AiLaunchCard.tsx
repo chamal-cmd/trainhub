@@ -50,7 +50,7 @@ export function AiLaunchCard() {
             <button
               key={q}
               onClick={() => openAiPanel(q)}
-              className="w-full text-left px-3 py-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-all truncate"
+              className="w-full text-left px-3 py-2 rounded-xl border border-slate-100 bg-slate-50 hover:bg-violet-50 hover:border-violet-300 hover:text-violet-800 text-xs text-slate-600 font-medium transition-all truncate"
             >
               &ldquo;{q}&rdquo;
             </button>

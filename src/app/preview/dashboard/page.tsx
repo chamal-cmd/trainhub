@@ -18,7 +18,7 @@ const completedModules = [
 function ProgressBar({ value, green }: { value: number; green?: boolean }) {
   return (
     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full transition-all ${green ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${value}%` }} />
+      <div className={`h-full rounded-full transition-all ${green ? 'bg-emerald-500' : 'bg-violet-600'}`} style={{ width: `${value}%` }} />
     </div>
   )
 }
@@ -26,7 +26,7 @@ function ProgressBar({ value, green }: { value: number; green?: boolean }) {
 function ModuleCard({ m, done }: { m: any; done?: boolean }) {
   return (
     <Link href="/preview/training">
-      <div className={`bg-white rounded-2xl border overflow-hidden hover:shadow-lg transition-all group cursor-pointer ${done ? 'border-emerald-100' : 'border-slate-100 hover:border-indigo-200'}`}>
+      <div className={`bg-white rounded-2xl border overflow-hidden hover:shadow-lg transition-all group cursor-pointer ${done ? 'border-emerald-100' : 'border-slate-100 hover:border-violet-300'}`}>
         <div className="h-1 w-full" style={{ backgroundColor: m.color }} />
         <div className="p-5">
           <div className="flex items-start gap-3.5 mb-4">
@@ -34,11 +34,11 @@ function ModuleCard({ m, done }: { m: any; done?: boolean }) {
               {m.emoji}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className={`font-bold text-sm leading-snug truncate transition-colors ${done ? 'text-slate-500' : 'text-slate-900 group-hover:text-indigo-600'}`}>{m.title}</h3>
+              <h3 className={`font-bold text-sm leading-snug truncate transition-colors ${done ? 'text-slate-500' : 'text-slate-900 group-hover:text-violet-700'}`}>{m.title}</h3>
             </div>
             {done
               ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              : <ArrowRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-400 transition-all shrink-0 mt-0.5" />}
+              : <ArrowRight className="w-4 h-4 text-slate-200 group-hover:text-violet-500 transition-all shrink-0 mt-0.5" />}
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -67,17 +67,17 @@ export default function PreviewDashboard() {
       <aside className="w-[220px] min-h-screen bg-[#1E1B4B] flex flex-col shrink-0 select-none">
         <div className="px-5 h-16 flex items-center border-b border-white/[0.07]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-md">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-none">TrainHub</p>
-              <p className="text-indigo-400 text-[10px] mt-0.5 leading-none">Learner Portal</p>
+              <p className="text-violet-500 text-[10px] mt-0.5 leading-none">Learner Portal</p>
             </div>
           </div>
         </div>
         <div className="px-4 pt-5 pb-2">
-          <p className="text-[10px] font-semibold text-indigo-400/60 uppercase tracking-widest">Menu</p>
+          <p className="text-[10px] font-semibold text-violet-500/60 uppercase tracking-widest">Menu</p>
         </div>
         <nav className="flex-1 px-2 space-y-0.5">
           {[
@@ -85,7 +85,7 @@ export default function PreviewDashboard() {
             { label: 'My Progress', href: '#',                  active: false },
           ].map(item => (
             <Link key={item.label} href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${item.active ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/50' : 'text-indigo-200/80 hover:bg-white/[0.07] hover:text-white'}`}>
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${item.active ? 'bg-violet-700 text-white shadow-md shadow-indigo-900/50' : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'}`}>
               <span className="flex-1 tracking-tight">{item.label}</span>
               {item.active && <div className="w-1.5 h-1.5 rounded-full bg-white/70" />}
             </Link>
@@ -93,10 +93,10 @@ export default function PreviewDashboard() {
         </nav>
         <div className="p-3 border-t border-white/[0.07]">
           <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 rounded-lg bg-white/[0.04]">
-            <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-xs font-bold text-white shrink-0">T</div>
+            <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-xs font-bold text-white shrink-0">T</div>
             <p className="text-xs font-semibold text-white truncate flex-1">Tharushi Atukorala</p>
           </div>
-          <Link href="/login" className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-indigo-300/70 hover:bg-white/[0.07] hover:text-white transition-all">
+          <Link href="/login" className="flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm text-violet-400/70 hover:bg-white/[0.07] hover:text-white transition-all">
             ← Back to Login
           </Link>
         </div>
@@ -107,14 +107,14 @@ export default function PreviewDashboard() {
         {/* Hero banner */}
         <div className="relative bg-[#1E1B4B] rounded-2xl overflow-hidden mb-8 p-6 md:p-8">
           <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-60 h-60 bg-indigo-600/20 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -right-10 w-60 h-60 bg-violet-700/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-1/3 w-40 h-40 bg-violet-600/15 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex items-center justify-between gap-4">
             <div>
-              <p className="text-indigo-300 text-sm font-medium mb-1">Welcome back 👋</p>
+              <p className="text-violet-400 text-sm font-medium mb-1">Welcome back 👋</p>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Tharushi Atukorala</h1>
-              <p className="text-indigo-200/70 text-sm mt-2">You've completed 1 of 5 modules.</p>
+              <p className="text-violet-300/70 text-sm mt-2">You've completed 1 of 5 modules.</p>
             </div>
             <div className="shrink-0 text-center hidden sm:block">
               <div className="relative w-20 h-20">
@@ -128,7 +128,7 @@ export default function PreviewDashboard() {
                   <span className="text-white font-bold text-lg">{overall}%</span>
                 </div>
               </div>
-              <p className="text-indigo-300 text-xs mt-1">Overall</p>
+              <p className="text-violet-400 text-xs mt-1">Overall</p>
             </div>
           </div>
         </div>

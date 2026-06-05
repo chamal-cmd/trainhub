@@ -148,7 +148,7 @@ export default function UsersPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
         </div>
       ) : (
         <div className="space-y-6">
@@ -171,7 +171,7 @@ export default function UsersPage() {
                       <p className="text-xs text-slate-500 truncate">{invite.email}</p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                      invite.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'
+                      invite.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-violet-100 text-violet-800'
                     }`}>
                       {invite.role === 'admin' ? '🛡️ Admin' : '👤 Member'}
                     </span>
@@ -237,7 +237,7 @@ export default function UsersPage() {
                 An invite email has been sent to{' '}
                 <strong className="text-slate-700">{inviteSuccess.email}</strong>
                 {' '}as a{' '}
-                <span className={`font-semibold ${inviteSuccess.role === 'admin' ? 'text-purple-700' : 'text-indigo-700'}`}>
+                <span className={`font-semibold ${inviteSuccess.role === 'admin' ? 'text-purple-700' : 'text-violet-800'}`}>
                   {inviteSuccess.role === 'admin' ? '🛡️ Admin' : '👤 Team Member'}
                 </span>.
               </p>
@@ -256,7 +256,7 @@ export default function UsersPage() {
                 className={`w-full h-10 rounded-xl text-white text-sm font-semibold transition-colors ${
                   inviteSuccess.role === 'admin'
                     ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-indigo-600 hover:bg-indigo-700'
+                    : 'bg-violet-700 hover:bg-violet-800'
                 }`}
               >
                 Done
@@ -281,12 +281,12 @@ export default function UsersPage() {
                 onClick={() => setInviteRole('user')}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   inviteRole === 'user'
-                    ? 'border-indigo-500 bg-indigo-50'
+                    ? 'border-violet-600 bg-violet-50'
                     : 'border-slate-200 hover:border-slate-300 bg-white'
                 }`}
               >
                 <div className="text-2xl mb-1.5">👤</div>
-                <p className={`text-sm font-bold ${inviteRole === 'user' ? 'text-indigo-700' : 'text-slate-800'}`}>
+                <p className={`text-sm font-bold ${inviteRole === 'user' ? 'text-violet-800' : 'text-slate-800'}`}>
                   Team Member
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">Access to training modules</p>

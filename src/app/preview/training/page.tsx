@@ -45,7 +45,7 @@ If a machine behaves unexpectedly:
 function ProgressBar({ value }: { value: number }) {
   return (
     <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-      <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${value}%` }} />
+      <div className="h-full rounded-full bg-violet-600 transition-all" style={{ width: `${value}%` }} />
     </div>
   )
 }
@@ -69,7 +69,7 @@ export default function PreviewTraining() {
       {/* Step sidebar */}
       <div className={cn('flex flex-col border-r border-slate-100 bg-slate-50 shrink-0 transition-all duration-300 overflow-hidden', sidebarOpen ? 'w-64' : 'w-0')}>
         <div className="px-4 py-4 border-b border-slate-100 shrink-0">
-          <Link href="/preview/dashboard" className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-600 mb-3 transition-colors group">
+          <Link href="/preview/dashboard" className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-700 mb-3 transition-colors group">
             <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> Back to module
           </Link>
           <div className="flex items-center gap-2 mb-3">
@@ -88,11 +88,11 @@ export default function PreviewTraining() {
             const active = i === currentIdx
             return (
               <button key={step.id} onClick={() => setCurrentIdx(i)}
-                className={cn('flex items-center gap-3 w-full px-4 py-3 text-left transition-all border-r-2', active ? 'bg-indigo-50 border-indigo-500' : 'border-transparent hover:bg-white hover:border-slate-200')}>
+                className={cn('flex items-center gap-3 w-full px-4 py-3 text-left transition-all border-r-2', active ? 'bg-violet-50 border-violet-600' : 'border-transparent hover:bg-white hover:border-slate-200')}>
                 {done
                   ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  : <div className={cn('w-4 h-4 rounded-full border-2 shrink-0 transition-colors', active ? 'border-indigo-500' : 'border-slate-300')} />}
-                <p className={cn('text-xs leading-snug font-medium truncate', active ? 'text-indigo-700' : done ? 'text-slate-400' : 'text-slate-600')}>{step.title}</p>
+                  : <div className={cn('w-4 h-4 rounded-full border-2 shrink-0 transition-colors', active ? 'border-violet-600' : 'border-slate-300')} />}
+                <p className={cn('text-xs leading-snug font-medium truncate', active ? 'text-violet-800' : done ? 'text-slate-400' : 'text-slate-600')}>{step.title}</p>
               </button>
             )
           })}
@@ -120,7 +120,7 @@ export default function PreviewTraining() {
           <div className="max-w-2xl mx-auto px-8 py-10">
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Step {currentIdx + 1}</span>
+                <span className="text-xs font-semibold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-full">Step {currentIdx + 1}</span>
                 {isDone && (
                   <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Done
@@ -157,7 +157,7 @@ export default function PreviewTraining() {
                 )}
                 {currentIdx < steps.length - 1 ? (
                   <button onClick={() => { markDone(); setCurrentIdx(currentIdx + 1) }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-sm">
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold transition-all shadow-sm">
                     Next <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 ) : (

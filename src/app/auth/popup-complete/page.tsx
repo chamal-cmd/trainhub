@@ -23,7 +23,7 @@ function PopupCompleteInner() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-3">
-      <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-700 rounded-full animate-spin" />
       <p className="text-sm text-slate-500">Signing you in…</p>
     </div>
   )

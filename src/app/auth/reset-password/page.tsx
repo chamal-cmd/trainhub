@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md">
+          <div className="w-9 h-9 rounded-xl bg-violet-700 flex items-center justify-center shadow-md">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-lg text-slate-900">TrainHub</span>
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
               </p>
               <a
                 href="/forgot-password"
-                className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors"
+                className="inline-flex items-center justify-center h-11 px-6 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold transition-colors"
               >
                 Request new link
               </a>
@@ -121,8 +121,8 @@ export default function ResetPasswordPage() {
             /* ── Set new password ── */
             <>
               <div className="mb-6">
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
-                  <Lock className="w-5 h-5 text-indigo-600" />
+                <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center mb-4">
+                  <Lock className="w-5 h-5 text-violet-700" />
                 </div>
                 <h2 className="text-xl font-bold text-slate-900 mb-1">Set new password</h2>
                 <p className="text-slate-500 text-sm">Choose a strong password for your account.</p>
@@ -140,7 +140,7 @@ export default function ResetPasswordPage() {
                       placeholder="Min. 8 characters"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all"
+                      className="w-full h-11 px-4 pr-11 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 focus:bg-white transition-all"
                     />
                     <button type="button" onClick={() => setShowPass(!showPass)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -171,7 +171,7 @@ export default function ResetPasswordPage() {
                     placeholder="Repeat your password"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
-                    className={`w-full h-11 px-4 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all ${
+                    className={`w-full h-11 px-4 rounded-xl border text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-violet-600 focus:bg-white transition-all ${
                       confirm && confirm !== password ? 'border-red-300' : 'border-slate-200'
                     }`}
                   />
@@ -190,7 +190,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !password || !confirm}
-                  className="w-full h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                  className="w-full h-11 rounded-xl bg-violet-700 hover:bg-violet-800 disabled:opacity-60 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2"
                 >
                   {loading
                     ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating…</>

@@ -44,7 +44,7 @@ export default function SetupPage() {
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-14 h-14 bg-violet-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <BookOpen className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">TrainHub Setup</h1>
@@ -58,7 +58,7 @@ export default function SetupPage() {
           {steps.map((step) => (
             <div key={step.num} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-800 flex items-center justify-center text-sm font-bold shrink-0">
                   {step.num}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -74,7 +74,7 @@ export default function SetupPage() {
                       href={step.action.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800"
                     >
                       {step.action.label}
                       <ExternalLink className="w-3 h-3" />

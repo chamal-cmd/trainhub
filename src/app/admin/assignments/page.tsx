@@ -117,7 +117,7 @@ export default function AssignmentsPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
         </div>
       ) : assignments.length > 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -213,7 +213,7 @@ export default function AssignmentsPage() {
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}

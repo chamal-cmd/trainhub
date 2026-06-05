@@ -88,7 +88,7 @@ export function AdminTopBar({ userName, userEmail }: Props) {
           <div className="relative ml-1" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(v => !v)}
-              className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-indigo-300 transition-all"
+              className="w-8 h-8 rounded-full bg-violet-700 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-violet-400 transition-all"
             >
               {initials}
             </button>

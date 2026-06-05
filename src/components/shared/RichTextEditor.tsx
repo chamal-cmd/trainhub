@@ -138,7 +138,7 @@ function ToolbarButton({
       title={title}
       className={cn(
         'w-7 h-7 rounded flex items-center justify-center text-sm transition-colors',
-        active ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100',
+        active ? 'bg-violet-700 text-white' : 'text-slate-600 hover:bg-slate-100',
         disabled && 'opacity-40 cursor-not-allowed'
       )}
     >
@@ -261,7 +261,7 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly = fals
   }
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-visible bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
+    <div className="border border-slate-200 rounded-xl overflow-visible bg-white focus-within:ring-2 focus-within:ring-violet-600 focus-within:border-violet-600 transition-all">
 
       {/* Hidden file input for image upload */}
       <input
@@ -361,13 +361,13 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly = fals
                 value={linkInput}
                 onChange={e => setLinkInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && insertLink()}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 mb-2"
+                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-violet-500 mb-2"
               />
               <button
                 type="button"
                 onClick={insertLink}
                 disabled={!linkInput.trim()}
-                className="w-full text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
+                className="w-full text-xs bg-violet-700 hover:bg-violet-800 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
               >
                 Insert link
               </button>
@@ -392,7 +392,7 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly = fals
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center gap-2 text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg px-3 py-2 font-semibold transition-colors mb-2"
+                className="w-full flex items-center gap-2 text-xs bg-violet-50 hover:bg-violet-100 text-violet-800 rounded-lg px-3 py-2 font-semibold transition-colors mb-2"
               >
                 <Upload className="w-3.5 h-3.5" />
                 Upload from device
@@ -410,13 +410,13 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly = fals
                 value={imageUrl}
                 onChange={e => setImageUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && insertImageUrl()}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 mb-2"
+                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-violet-500 mb-2"
               />
               <button
                 type="button"
                 onClick={insertImageUrl}
                 disabled={!imageUrl.trim()}
-                className="w-full text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
+                className="w-full text-xs bg-violet-700 hover:bg-violet-800 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
               >
                 Insert from URL
               </button>
@@ -444,13 +444,13 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly = fals
                 value={videoInput}
                 onChange={e => setVideoInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && insertVideo()}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-indigo-400 mb-2"
+                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-violet-500 mb-2"
               />
               <button
                 type="button"
                 onClick={insertVideo}
                 disabled={!videoInput.trim()}
-                className="w-full text-xs bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
+                className="w-full text-xs bg-violet-700 hover:bg-violet-800 disabled:opacity-40 text-white rounded-lg py-1.5 font-semibold transition-colors"
               >
                 Embed video
               </button>

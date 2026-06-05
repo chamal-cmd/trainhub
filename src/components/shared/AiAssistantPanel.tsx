@@ -291,7 +291,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
               <SquarePen className="w-4 h-4" />
             </button>
             <button onClick={() => setShowHistory(v => !v)} title="Chat history"
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${showHistory ? 'bg-indigo-50 text-indigo-500' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${showHistory ? 'bg-violet-50 text-violet-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>
               <Clock className="w-4 h-4" />
             </button>
             <button onClick={onClose} title="Close"
@@ -314,7 +314,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
                   return (
                     <button key={i}
                       onClick={() => { setMessages(chat); setShowHistory(false) }}
-                      className="w-full text-left px-3 py-2.5 bg-white rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 transition-colors text-sm text-slate-700 truncate">
+                      className="w-full text-left px-3 py-2.5 bg-white rounded-xl border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-colors text-sm text-slate-700 truncate">
                       {first}
                     </button>
                   )
@@ -365,7 +365,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
                       )}
                       <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                         msg.role === 'user'
-                          ? 'bg-indigo-600 text-white rounded-br-sm'
+                          ? 'bg-violet-700 text-white rounded-br-sm'
                           : 'bg-slate-100 text-slate-800 rounded-bl-sm'
                       }`}>
                         {msg.content === '' && msg.streaming ? (
@@ -396,7 +396,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
 
             {/* ── Input ── */}
             <div className="px-4 pb-4 pt-2 shrink-0 border-t border-slate-100">
-              <div className="relative bg-slate-50 border border-slate-200 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-300 focus-within:border-indigo-300 transition-all">
+              <div className="relative bg-slate-50 border border-slate-200 rounded-2xl focus-within:ring-2 focus-within:ring-violet-400 focus-within:border-violet-400 transition-all">
                 <textarea
                   ref={inputRef}
                   rows={3}
@@ -419,7 +419,7 @@ export function AiAssistantPanel({ open, onClose, userName, completionRate }: Pr
                   <button
                     onClick={() => sendMessage(input)}
                     disabled={!input.trim()}
-                    className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:bg-indigo-600 enabled:hover:bg-indigo-700 enabled:shadow-sm bg-slate-300"
+                    className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:bg-violet-700 enabled:hover:bg-violet-800 enabled:shadow-sm bg-slate-300"
                   >
                     <Send className="w-3.5 h-3.5 text-white" />
                   </button>
