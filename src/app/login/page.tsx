@@ -160,7 +160,7 @@ function LoginPageInner() {
 
       {/* ── Left: hero panel ── */}
       <div className="hidden lg:flex w-[54%] relative flex-col overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-950 via-slate-900 to-violet-950" />
         <div className="absolute top-[-120px] left-[-60px] w-[500px] h-[500px] rounded-full bg-violet-700/25 blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-80px] right-[-40px] w-[400px] h-[400px] rounded-full bg-violet-600/20 blur-[80px] pointer-events-none" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-violet-600/10 blur-[60px] pointer-events-none" />
@@ -169,7 +169,7 @@ function LoginPageInner() {
 
         <div className="relative z-10 flex flex-col h-full px-14 py-12">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <span className="text-white font-bold text-lg tracking-tight">TrainHub</span>

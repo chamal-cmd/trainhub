@@ -17,7 +17,7 @@ export function UserClientWrapper({
   userRole,
   completionRate,
 }: UserClientWrapperProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">

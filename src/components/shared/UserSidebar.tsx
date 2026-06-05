@@ -60,7 +60,7 @@ export function UserSidebar({ userName }: { userName?: string }) {
                   className={cn(
                     'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                     active
-                      ? 'bg-violet-700 text-white shadow-md shadow-indigo-900/50'
+                      ? 'bg-violet-700 text-white shadow-md shadow-violet-900/50'
                       : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'
                   )}
                 >

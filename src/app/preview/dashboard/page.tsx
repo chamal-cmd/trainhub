@@ -85,7 +85,7 @@ export default function PreviewDashboard() {
             { label: 'My Progress', href: '#',                  active: false },
           ].map(item => (
             <Link key={item.label} href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${item.active ? 'bg-violet-700 text-white shadow-md shadow-indigo-900/50' : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'}`}>
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${item.active ? 'bg-violet-700 text-white shadow-md shadow-violet-900/50' : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'}`}>
               <span className="flex-1 tracking-tight">{item.label}</span>
               {item.active && <div className="w-1.5 h-1.5 rounded-full bg-white/70" />}
             </Link>

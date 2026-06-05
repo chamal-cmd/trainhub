@@ -135,7 +135,7 @@ export default function QuizPage({ params }: PageParams) {
 
   if (loading) return (
     <div className="flex items-center justify-center h-screen">
-      <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
+      <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
     </div>
   )
 
@@ -220,7 +220,7 @@ export default function QuizPage({ params }: PageParams) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-indigo-600" />
+            <HelpCircle className="w-5 h-5 text-violet-700" />
             <span className="font-semibold text-slate-700 text-sm">{quiz.title}</span>
           </div>
           <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-full">
@@ -232,7 +232,7 @@ export default function QuizPage({ params }: PageParams) {
 
         {/* Question card */}
         <div className="bg-white rounded-2xl border border-slate-200 p-7 shadow-sm">
-          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-3">
+          <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-3">
             Question {currentIdx + 1}
           </p>
           <h2 className="text-lg font-bold text-slate-900 mb-6">{question.question_text}</h2>
@@ -243,8 +243,8 @@ export default function QuizPage({ params }: PageParams) {
               const isCorrect = option.is_correct
               const revealed = answerState !== 'unanswered'
 
-              let style = 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer'
-              if (isSelected && !revealed) style = 'border-indigo-500 bg-indigo-50'
+              let style = 'border-slate-200 bg-slate-50 hover:border-violet-400 hover:bg-violet-50 cursor-pointer'
+              if (isSelected && !revealed) style = 'border-violet-600 bg-violet-50'
               if (revealed && isCorrect) style = 'border-emerald-400 bg-emerald-50 cursor-default'
               if (revealed && isSelected && !isCorrect) style = 'border-red-400 bg-red-50 cursor-default'
               if (revealed && !isSelected && !isCorrect) style = 'border-slate-100 bg-slate-50 opacity-60 cursor-default'
@@ -258,7 +258,7 @@ export default function QuizPage({ params }: PageParams) {
                 >
                   <div className={cn(
                     'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
-                    isSelected && !revealed ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300',
+                    isSelected && !revealed ? 'border-violet-600 bg-violet-600' : 'border-slate-300',
                     revealed && isCorrect ? 'border-emerald-500 bg-emerald-500' : '',
                     revealed && isSelected && !isCorrect ? 'border-red-500 bg-red-500' : '',
                   )}>

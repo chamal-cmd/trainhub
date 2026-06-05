@@ -46,7 +46,7 @@ function WelcomeInner() {
   const isAdmin = role === 'admin'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-950 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-violet-950 via-slate-900 to-violet-950 flex items-center justify-center p-6">
       {/* Background glow */}
       <div className="absolute top-[-100px] left-[-60px] w-[500px] h-[500px] rounded-full bg-violet-700/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-60px] right-[-40px] w-[400px] h-[400px] rounded-full bg-violet-600/15 blur-[100px] pointer-events-none" />
@@ -55,7 +55,7 @@ function WelcomeInner() {
 
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+          <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <span className="text-white font-bold text-xl tracking-tight">TrainHub</span>

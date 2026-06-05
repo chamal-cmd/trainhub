@@ -310,7 +310,7 @@ export default function KnowledgeBasePage() {
 
       {/* Info */}
       <div className="mt-6 bg-violet-50 border border-violet-100 rounded-2xl p-5">
-        <h3 className="text-sm font-bold text-indigo-900 mb-1.5">How it works</h3>
+        <h3 className="text-sm font-bold text-violet-900 mb-1.5">How it works</h3>
         <p className="text-xs text-violet-800 leading-relaxed">
           Every AI conversation automatically includes these documents as context. The AI reads your SOPs and guides
           to give accurate, company-specific answers — no hallucinations about your processes.

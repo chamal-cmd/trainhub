@@ -279,7 +279,7 @@ export default function VideoLibraryPage() {
       {/* Guide callout */}
       {!loading && steps.length > 0 && (
         <div className="mt-8 bg-violet-50 border border-violet-100 rounded-2xl p-5">
-          <h3 className="text-sm font-bold text-indigo-900 mb-1.5">Adding new videos</h3>
+          <h3 className="text-sm font-bold text-violet-900 mb-1.5">Adding new videos</h3>
           <p className="text-xs text-violet-800 leading-relaxed">
             Open any step → click the <strong>🎬 video button</strong> in the toolbar → paste a URL.
             Supports <strong>Loom</strong>, <strong>YouTube</strong>, <strong>Tango</strong> (free), <strong>Scribe</strong>, and <strong>Google Drive</strong> links.
