@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation'
 import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
 import {
   ArrowLeft, CheckCircle2, HelpCircle, ChevronRight,
-  FileText, Clock, BookOpen, Lock
+  FileText, Clock, BookOpen, Lock, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -42,10 +42,15 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
 
   // quiz_attempts & topic completions fetched separately (tables may not exist yet)
   let quizAttemptsRes: { data: any[] | null } = { data: [] }
+  let topicQuizRes:    { data: any[] | null } = { data: [] }
   try {
     quizAttemptsRes = await supabase
       .from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id)
   } catch { /* table may not exist */ }
+  try {
+    topicQuizRes = await supabase
+      .from('topic_quiz_completions').select('topic_id, passed').eq('user_id', user.id)
+  } catch { /* table may not exist yet — run migration SQL first */ }
 
   const profile    = profileRes.data
   const assignment = assignmentRes.data
@@ -55,8 +60,9 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   if (!subject) notFound()
   if (!assignment && !isAdmin) notFound()
 
-  const completedIds  = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
-  const passedQuizIds = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
+  const completedIds       = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
+  const passedQuizIds      = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
+  const passedTopicQuizIds = new Set(topicQuizRes.data?.filter(r => r.passed).map(r => r.topic_id) ?? [])
 
   const topics = (subject.topics ?? [])
     .sort((a: any, b: any) => a.order_index - b.order_index)
@@ -87,18 +93,34 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     if (total === 0)   return 'empty'
     if (done === 0)    return 'not_started'
     if (done < total)  return 'in_progress'
+    // All steps done — check if the knowledge-check quiz was passed
+    if (!passedTopicQuizIds.has(t.id)) return 'quiz_pending'
     return 'completed'
   }
 
   /**
-   * Topic is locked if the previous topic's steps aren't all complete.
+   * Topic is locked until the PREVIOUS topic's quiz has been passed.
    * Admins always see unlocked so they can preview freely.
    */
   function isTopicLocked(index: number): boolean {
     if (isAdmin || index === 0) return false
     const prev = topics[index - 1]
     if (prev.steps.length === 0) return false
-    return !prev.steps.every((s: any) => completedIds.has(s.id))
+    // Must pass the previous topic's knowledge-check quiz to unlock
+    return !passedTopicQuizIds.has(prev.id)
+  }
+
+  /**
+   * Human-readable reason why a topic is locked —
+   * distinguishes "steps not done" from "quiz not passed".
+   */
+  function topicLockReason(index: number): string {
+    if (index === 0) return ''
+    const prev = topics[index - 1]
+    const prevStepsDone = prev.steps.length > 0 &&
+      prev.steps.every((s: any) => completedIds.has(s.id))
+    if (!prevStepsDone) return `Complete "${prev.title}" first`
+    return `Pass the quiz in "${prev.title}" to unlock`
   }
 
   return (
@@ -201,19 +223,23 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
                     )}>
                       {topic.title}
                     </span>
-                    {locked && prevTopic && (
+                    {locked && (
                       <span className="text-[11px] text-slate-400 truncate block">
-                        Complete &ldquo;{prevTopic.title}&rdquo; first
+                        {topicLockReason(ti)}
                       </span>
                     )}
                   </div>
 
                   {/* Status badges */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Step completion badge */}
                     {status === 'completed' && (
                       <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
                         <CheckCircle2 className="w-3 h-3" /> Completed
+                      </span>
+                    )}
+                    {status === 'quiz_pending' && (
+                      <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
+                        <Sparkles className="w-3 h-3" /> Take quiz
                       </span>
                     )}
                     {status === 'in_progress' && (
