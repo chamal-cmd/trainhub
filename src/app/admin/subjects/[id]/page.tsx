@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
 import { ManageAccessModal } from '@/components/shared/ManageAccessModal'
-import { COVER_COLORS, COVER_EMOJIS, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import {
   ChevronRight,
   ChevronDown,
@@ -18,6 +18,7 @@ import {
   Check,
   ArrowLeft,
   Eye,
+  BookOpen,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -85,7 +86,6 @@ function SubjectEditorInner() {
   const [editDescription, setEditDescription] = useState('')
   const [editEmoji, setEditEmoji] = useState('')
   const [editColor, setEditColor] = useState('')
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [savingInfo, setSavingInfo] = useState(false)
   const [infoSaved, setInfoSaved] = useState(false)
 
@@ -414,58 +414,6 @@ function SubjectEditorInner() {
 
         {/* ── Subject info section ─────────────────────────────────────────── */}
         <div className="px-4 pb-3 shrink-0 border-b border-slate-100">
-
-          {/* Emoji + color strip */}
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative">
-              <button
-                onClick={() => setShowEmojiPicker((v) => !v)}
-                className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl hover:ring-2 hover:ring-violet-400 transition-all"
-                style={{ backgroundColor: editColor + '22' }}
-                title="Change emoji"
-              >
-                {editEmoji}
-              </button>
-              {showEmojiPicker && (
-                <div className="absolute top-12 left-0 z-20 bg-white rounded-xl shadow-xl border border-slate-200 p-2 w-52">
-                  <div className="grid grid-cols-8 gap-1">
-                    {COVER_EMOJIS.map((e) => (
-                      <button
-                        key={e}
-                        onClick={() => {
-                          setEditEmoji(e)
-                          setShowEmojiPicker(false)
-                        }}
-                        className={cn(
-                          'w-6 h-6 rounded text-sm flex items-center justify-center transition-colors',
-                          editEmoji === e
-                            ? 'bg-violet-100 ring-1 ring-violet-500'
-                            : 'hover:bg-slate-100'
-                        )}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Color dots */}
-            <div className="flex flex-wrap gap-1.5">
-              {COVER_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setEditColor(c)}
-                  className={cn(
-                    'w-5 h-5 rounded-full transition-all',
-                    editColor === c ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'hover:scale-105'
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
 
           {/* Editable title */}
           <input
@@ -808,11 +756,8 @@ function SubjectEditorInner() {
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
-            <div
-              className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-5 shadow-sm"
-              style={{ backgroundColor: (editColor || subject.cover_color) + '22' }}
-            >
-              {editEmoji || subject.emoji}
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5 bg-violet-50 border border-violet-100">
+              <BookOpen className="w-9 h-9 text-violet-400" />
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">{editTitle || subject.title}</h2>
             <p className="text-slate-400 text-sm max-w-xs leading-relaxed">
