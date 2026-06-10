@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import React from 'react'
 import {
   LayoutDashboard, BookOpen, Users, ClipboardList,
-  BarChart3, LogOut, GraduationCap, HelpCircle, Eye, Brain,
+  BarChart3, LogOut, GraduationCap, HelpCircle, Eye, Brain, Building2,
 } from 'lucide-react'
 
 interface NavItem {
@@ -35,8 +35,9 @@ const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'People',
     items: [
-      { href: '/admin/users',       label: 'Users',       icon: Users },
-      { href: '/admin/assignments', label: 'Assignments', icon: ClipboardList },
+      { href: '/admin/users',       label: 'Users',           icon: Users },
+      { href: '/admin/assignments', label: 'Assignments',     icon: ClipboardList },
+      { href: '/admin/clients',     label: 'Client Training', icon: Building2 },
     ],
   },
   {

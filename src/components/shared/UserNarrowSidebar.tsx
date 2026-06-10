@@ -3,15 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, BookOpen, TrendingUp, Users, Wrench, Settings } from 'lucide-react'
+import { LayoutDashboard, BookOpen, TrendingUp, Users, Wrench, Settings, Building2 } from 'lucide-react'
 
 const items = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Home',        exact: true,  disabled: false },
-  { href: '/library',   icon: BookOpen,         label: 'Library',     exact: false, disabled: false },
-  { href: '/tools',     icon: Wrench,           label: 'Tools',       exact: false, disabled: false },
-  { href: '/profile',   icon: TrendingUp,       label: 'My Progress', exact: false, disabled: false },
-  { href: '/dashboard', icon: Users,            label: 'Team',        exact: false, disabled: true  },
-  { href: '/settings',  icon: Settings,         label: 'Settings',    exact: false, disabled: false },
+  { href: '/dashboard',       icon: LayoutDashboard, label: 'Home',           exact: true,  disabled: false },
+  { href: '/library',         icon: BookOpen,         label: 'Library',        exact: false, disabled: false },
+  { href: '/client-training', icon: Building2,        label: 'Client Training',exact: false, disabled: false },
+  { href: '/tools',           icon: Wrench,           label: 'Tools',          exact: false, disabled: false },
+  { href: '/profile',         icon: TrendingUp,       label: 'My Progress',    exact: false, disabled: false },
+  { href: '/settings',        icon: Settings,         label: 'Settings',       exact: false, disabled: false },
 ]
 
 export function UserNarrowSidebar() {
