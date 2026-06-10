@@ -52,71 +52,24 @@ function LoginPageInner() {
   async function signInWithGoogle() {
     setGoogleLoading(true)
     setError('')
-
-    // ── Step 1: open the popup SYNCHRONOUSLY inside the user-gesture context ──
-    // Chrome drops the user-gesture flag after any `await`, so window.open()
-    // called after an async call would be silently blocked. Opening to
-    // 'about:blank' first guarantees Chrome allows it, then we navigate it
-    // to the real OAuth URL once we have it.
-    const w    = 480, h = 600
-    const left = Math.round(window.screenX + (window.outerWidth  - w) / 2)
-    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2)
-    const popup = window.open(
-      'about:blank',
-      'google-signin',
-      `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    )
-
-    // ── Step 2: fetch the OAuth URL (async) ──
     const supabase = createClient()
     const { data, error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?popup=1`,
-        skipBrowserRedirect: true,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
       },
     })
-
     if (err || !data?.url) {
-      popup?.close()
-      const msg = err?.message?.toLowerCase().includes('provider')
-        ? "Google OAuth is not enabled yet in Supabase. Use a demo account below while that's being set up."
-        : `Google sign-in failed: ${err?.message ?? 'Unknown error'}`
-      setError(msg)
+      setError(err?.message ?? 'Google sign-in failed. Check Google is enabled in Supabase.')
       setGoogleLoading(false)
       return
     }
-
-    if (!popup || popup.closed) {
-      // Popup was blocked by the browser — fall back to full-page redirect
-      window.location.href = data.url
-      return
-    }
-
-    // ── Step 3: navigate the already-open popup to Google's sign-in page ──
-    popup.location.href = data.url
-
-    // Listen for success message posted by /auth/popup-complete
-    function onMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return
-      if (event.data?.type === 'GOOGLE_SIGNIN_SUCCESS') {
-        window.removeEventListener('message', onMessage)
-        clearInterval(pollTimer)
-        popup?.close()
-        router.push(event.data.role === 'admin' ? '/admin' : '/dashboard')
-        router.refresh()
-      }
-    }
-    window.addEventListener('message', onMessage)
-
-    // Detect if user closes the popup without completing sign-in
-    const pollTimer = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(pollTimer)
-        window.removeEventListener('message', onMessage)
-        setGoogleLoading(false)
-      }
-    }, 500)
+    // Full-page redirect to Google — simple, reliable, no popup issues
+    window.location.href = data.url
   }
 
   async function signIn(e_: string, p_: string, demo?: string) {
@@ -258,7 +211,7 @@ function LoginPageInner() {
                 {googleLoading
                   ? <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
                   : <GoogleLogo />}
-                {googleLoading ? 'Redirecting to Google…' : 'Sign in with Google'}
+                {googleLoading ? 'Redirecting…' : 'Sign in with Google'}
               </button>
 
               <p className="text-[11px] text-center text-slate-400 mb-7 leading-relaxed px-2">
