@@ -49,27 +49,11 @@ function LoginPageInner() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [demoKey, setDemoKey]     = useState<string | null>(null)
 
-  async function signInWithGoogle() {
+  function signInWithGoogle() {
     setGoogleLoading(true)
     setError('')
-    const supabase = createClient()
-    const { data, error: err } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'select_account',
-        },
-      },
-    })
-    if (err || !data?.url) {
-      setError(err?.message ?? 'Google sign-in failed. Check Google is enabled in Supabase.')
-      setGoogleLoading(false)
-      return
-    }
-    // Full-page redirect to Google — simple, reliable, no popup issues
-    window.location.href = data.url
+    // Server-side OAuth initiation — fixes PKCE code verifier storage on edge
+    window.location.href = '/api/auth/google'
   }
 
   async function signIn(e_: string, p_: string, demo?: string) {
