@@ -44,6 +44,8 @@ function LoginPageInner() {
     if (raw === 'auth_failed')   return 'Sign-in failed. Please try again.'
     return `Sign-in error: ${decodeURIComponent(raw)}.`
   })
+  // Clear ?error= from the URL so refreshing doesn't re-show the error
+  useState(() => { if (searchParams.get('error')) router.replace('/login') })
   const [success, setSuccess]     = useState('')
   const [loading, setLoading]     = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
