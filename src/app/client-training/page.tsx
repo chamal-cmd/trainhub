@@ -22,12 +22,14 @@ export default function ClientTrainingPage() {
 
   useEffect(() => { load() }, [])
 
+  const [needsMigration, setNeedsMigration] = useState(false)
+
   async function load() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     // Fetch assignments with related data
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('client_training_assignments')
       .select(`
         id, created_at,
@@ -37,6 +39,8 @@ export default function ClientTrainingPage() {
       `)
       .eq('trainee_id', user.id)
       .order('created_at', { ascending: false })
+
+    if (error) { setNeedsMigration(true); setLoading(false); return }
 
     setAssignments((data ?? []).map((a: any) => {
       const allSubtasks: any[] = (a.client?.client_tasks ?? [])
@@ -71,7 +75,15 @@ export default function ClientTrainingPage() {
         </div>
       )}
 
-      {!loading && assignments.length === 0 && (
+      {needsMigration && (
+        <div className="bg-white rounded-2xl border border-slate-200 flex flex-col items-center justify-center py-16 px-8 text-center">
+          <Building2 className="w-9 h-9 text-slate-300 mb-3" />
+          <p className="text-sm font-semibold text-slate-500">Client Training coming soon</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs">This feature is being set up by your administrator.</p>
+        </div>
+      )}
+
+      {!loading && !needsMigration && assignments.length === 0 && (
         <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center py-24">
           <Building2 className="w-9 h-9 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">No client assignments yet</p>

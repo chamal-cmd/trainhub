@@ -34,14 +34,22 @@ export default function AdminClientsPage() {
 
   useEffect(() => { load() }, [])
 
+  const [needsMigration, setNeedsMigration] = useState(false)
+
   async function load() {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clients')
       .select(`id, name, xero_file, description, is_active,
                client_tasks(id),
                client_training_assignments(id)`)
       .order('name')
+    if (error) {
+      // Table doesn't exist yet — migration not run
+      setNeedsMigration(true)
+      setLoading(false)
+      return
+    }
     setClients((data ?? []).map((c: any) => ({
       id:               c.id,
       name:             c.name,
@@ -83,6 +91,23 @@ export default function AdminClientsPage() {
         </Button>
       </div>
 
+      {/* Migration banner */}
+      {needsMigration && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-4">
+          <p className="text-sm font-bold text-amber-900 mb-1">⚠️ Database setup required</p>
+          <p className="text-xs text-amber-800 mb-3">
+            The Client Training tables don&apos;t exist yet. Run the migration SQL in Supabase to enable this feature.
+          </p>
+          <ol className="text-xs text-amber-800 space-y-1 list-decimal list-inside">
+            <li>Go to <strong>Supabase → SQL Editor</strong></li>
+            <li>Open file <code className="bg-amber-100 px-1 rounded">supabase/migrations/20260610_client_training.sql</code></li>
+            <li>Copy the entire contents and paste into the SQL Editor</li>
+            <li>Click <strong>Run</strong></li>
+            <li>Refresh this page</li>
+          </ol>
+        </div>
+      )}
+
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-16">
@@ -91,7 +116,7 @@ export default function AdminClientsPage() {
       )}
 
       {/* Empty */}
-      {!loading && clients.length === 0 && (
+      {!loading && !needsMigration && clients.length === 0 && (
         <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center py-24">
           <Building2 className="w-9 h-9 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">No clients yet</p>
@@ -103,7 +128,7 @@ export default function AdminClientsPage() {
       )}
 
       {/* Table */}
-      {!loading && clients.length > 0 && (
+      {!loading && !needsMigration && clients.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>

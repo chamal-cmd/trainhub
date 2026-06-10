@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle, Clock, Globe, Lock } from 'lucide-react'
+import { Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle, Clock, Globe, Lock, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -216,6 +216,11 @@ export default function SubjectsPage() {
                       {timeAgo(subject.updated_at || subject.created_at)}
                     </div>
                     <div className="ml-auto flex items-center gap-1.5">
+                      <Link href={`/training/${subject.id}`} target="_blank" onClick={e => e.stopPropagation()}>
+                        <div className="p-1.5 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-all" title="Preview as learner">
+                          <Eye className="w-3.5 h-3.5" />
+                        </div>
+                      </Link>
                       <button
                         onClick={e => { e.preventDefault(); e.stopPropagation(); deleteSubject(subject) }}
                         disabled={isDeleting}

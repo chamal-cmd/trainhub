@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Check,
   ArrowLeft,
+  Eye,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -52,9 +53,21 @@ type SelectedStep = {
   topicId: string
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────────
+// ── Suspense wrapper (required for useSearchParams in Next.js App Router) ─────
 
 export default function SubjectEditorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <SubjectEditorInner />
+    </Suspense>
+  )
+}
+
+function SubjectEditorInner() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -707,6 +720,12 @@ export default function SubjectEditorPage() {
 
         {/* ── Bottom actions ──────────────────────────────────────────────── */}
         <div className="px-4 py-3 border-t border-slate-100 space-y-2 shrink-0">
+          <Link href={`/training/${subjectId}`} target="_blank">
+            <button className="w-full flex items-center justify-center gap-2 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors">
+              <Eye className="w-3.5 h-3.5" />
+              Preview as Learner
+            </button>
+          </Link>
           <button
             onClick={() => setShowAccessModal(true)}
             className="w-full flex items-center justify-center gap-2 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors"
