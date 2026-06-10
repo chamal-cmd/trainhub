@@ -215,11 +215,23 @@ export default function SubjectsPage() {
                       <Clock className="w-3 h-3" />
                       {timeAgo(subject.updated_at || subject.created_at)}
                     </div>
-                    <Link href={`/admin/subjects/${subject.id}`} className="ml-auto">
-                      <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                        Edit <ArrowRight className="w-3 h-3" />
-                      </div>
-                    </Link>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); deleteSubject(subject) }}
+                        disabled={isDeleting}
+                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
+                        title="Delete module"
+                      >
+                        {isDeleting
+                          ? <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                          : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <Link href={`/admin/subjects/${subject.id}`}>
+                        <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                          Edit <ArrowRight className="w-3 h-3" />
+                        </div>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
