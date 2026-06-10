@@ -1026,51 +1026,197 @@ function ClientDetailInner({ params }: Params) {
               </button>
             </div>
 
-            {/* Task overview cards */}
+            {/* Task module cards — fully editable */}
             <div className="space-y-4">
-              {tasks.length === 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                  <p className="text-sm text-slate-400">No tasks yet — add tasks from the sidebar or copy from the Knowledge Base above.</p>
+              {tasks.length === 0 && !addingTask && (
+                <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
+                  <p className="text-sm text-slate-400">No modules yet.</p>
+                  <p className="text-xs text-slate-300 mt-1">Add a task below or copy from the Knowledge Base above.</p>
                 </div>
               )}
+
               {tasks.map((task) => (
-                <div key={task.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div key={task.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card">
+
+                  {/* ── Task header ── */}
                   <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
                     <BarChart2 className="w-4 h-4 text-violet-600 shrink-0" />
-                    <h3 className="font-semibold text-slate-800 text-sm">{task.title}</h3>
-                    <span className="ml-auto text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">
+
+                    {renamingTaskId === task.id ? (
+                      <input
+                        autoFocus
+                        value={renameTaskValue}
+                        onChange={(e) => setRenameTaskValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') renameTask(task.id)
+                          if (e.key === 'Escape') setRenamingTaskId(null)
+                        }}
+                        onBlur={() => renameTask(task.id)}
+                        className="flex-1 text-sm font-semibold text-slate-800 border border-violet-400 rounded-lg px-2 py-0.5 outline-none bg-white"
+                      />
+                    ) : (
+                      <h3
+                        onDoubleClick={() => { setRenamingTaskId(task.id); setRenameTaskValue(task.title) }}
+                        className="flex-1 font-semibold text-slate-800 text-sm cursor-text select-none"
+                        title="Double-click to rename"
+                      >
+                        {task.title}
+                      </h3>
+                    )}
+
+                    <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 shrink-0">
                       {task.subtasks.length} subtask{task.subtasks.length !== 1 ? 's' : ''}
                     </span>
+
+                    <button
+                      onClick={() => deleteTask(task.id, task.title)}
+                      className="opacity-0 group-hover/card:opacity-100 p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all ml-1 shrink-0"
+                      title="Delete task"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  {task.subtasks.length === 0 ? (
-                    <p className="text-xs text-slate-400 px-5 py-3">No subtasks yet.</p>
-                  ) : (
-                    <div className="divide-y divide-slate-100">
-                      {task.subtasks.map((sub) => (
-                        <div key={sub.id} className="flex items-start gap-3 px-5 py-2.5">
-                          <div className="w-4 h-4 mt-0.5 rounded border border-slate-300 shrink-0 flex items-center justify-center">
+
+                  {/* ── Subtask list ── */}
+                  <div className="divide-y divide-slate-100">
+                    {task.subtasks.map((sub) => (
+                      <div key={sub.id} className="group/sub px-5 py-3">
+
+                        {/* Title row */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-4 h-4 mt-0.5 rounded border border-slate-200 shrink-0 flex items-center justify-center bg-slate-50">
                             <div className="w-2 h-2 rounded-sm bg-slate-200" />
                           </div>
+
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-700">{sub.title}</p>
-                            {sub.video_url && (
-                              <a
-                                href={sub.video_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            {renamingSubtaskId === sub.id ? (
+                              <input
+                                autoFocus
+                                value={renameSubtaskValue}
+                                onChange={(e) => setRenameSubtaskValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') renameSubtask(sub.id, task.id)
+                                  if (e.key === 'Escape') setRenamingSubtaskId(null)
+                                }}
+                                onBlur={() => renameSubtask(sub.id, task.id)}
+                                className="w-full text-sm text-slate-700 border border-violet-400 rounded-lg px-2 py-0.5 outline-none bg-white"
+                              />
+                            ) : (
+                              <p
+                                onDoubleClick={() => { setRenamingSubtaskId(sub.id); setRenameSubtaskValue(sub.title) }}
+                                className="text-sm text-slate-700 cursor-text"
+                                title="Double-click to rename"
+                              >
+                                {sub.title}
+                              </p>
+                            )}
+
+                            {/* Video URL display / inline editor */}
+                            {editingVideoSubtaskId === sub.id ? (
+                              <input
+                                autoFocus
+                                value={editingVideoValue}
+                                onChange={(e) => setEditingVideoValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveSubtaskVideo(sub.id, task.id)
+                                  if (e.key === 'Escape') setEditingVideoSubtaskId(null)
+                                }}
+                                onBlur={() => saveSubtaskVideo(sub.id, task.id)}
+                                placeholder="Paste video URL (blank to remove)"
+                                className="w-full text-xs border border-violet-400 rounded-lg px-2 py-1 outline-none bg-white mt-1.5"
+                              />
+                            ) : sub.video_url ? (
+                              <button
+                                onClick={() => { setEditingVideoSubtaskId(sub.id); setEditingVideoValue(sub.video_url ?? '') }}
                                 className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline mt-0.5"
                               >
                                 <Link2 className="w-3 h-3" />
                                 Training video
-                              </a>
-                            )}
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {/* Hover action buttons */}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0 mt-0.5">
+                            <button
+                              onClick={() => { setEditingVideoSubtaskId(sub.id); setEditingVideoValue(sub.video_url ?? '') }}
+                              className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                              title="Set video URL"
+                            >
+                              <Link2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => deleteSubtask(sub.id, task.id)}
+                              className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete subtask"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Add subtask row ── */}
+                  <div className="px-5 py-2.5 border-t border-dashed border-slate-100">
+                    {addingSubtaskForTask === task.id ? (
+                      <input
+                        autoFocus
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') addSubtask(task.id)
+                          if (e.key === 'Escape') setAddingSubtaskForTask(null)
+                        }}
+                        onBlur={() => {
+                          if (newSubtaskTitle.trim()) addSubtask(task.id)
+                          else setAddingSubtaskForTask(null)
+                        }}
+                        placeholder="New subtask title…"
+                        className="w-full text-sm border border-violet-400 rounded-xl px-3 py-1.5 outline-none bg-white"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => { setAddingSubtaskForTask(task.id); setNewSubtaskTitle('') }}
+                        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-700 hover:bg-violet-50 rounded-lg px-1.5 py-1 -mx-1.5 w-full transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add subtask
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
+
+              {/* ── Add new task ── */}
+              <div>
+                {addingTask ? (
+                  <input
+                    autoFocus
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addTask()
+                      if (e.key === 'Escape') setAddingTask(false)
+                    }}
+                    onBlur={() => {
+                      if (newTaskTitle.trim()) addTask()
+                      else setAddingTask(false)
+                    }}
+                    placeholder="New task title…"
+                    className="w-full text-sm border border-violet-400 rounded-2xl px-4 py-3 outline-none bg-white shadow-sm"
+                  />
+                ) : (
+                  <button
+                    onClick={() => { setAddingTask(true); setNewTaskTitle('') }}
+                    className="flex items-center gap-2 text-sm text-slate-500 hover:text-violet-700 bg-white hover:bg-violet-50 border-2 border-dashed border-slate-200 hover:border-violet-300 rounded-2xl px-4 py-3 w-full transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add task
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
