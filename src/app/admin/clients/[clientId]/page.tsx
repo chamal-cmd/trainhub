@@ -92,10 +92,13 @@ function ClientDetailInner({ params }: Params) {
   const [loading, setLoading] = useState(true)
 
   // Client info
-  const [clientName, setClientName] = useState('')
-  const [xeroFile, setXeroFile] = useState('')
+  const [clientName,  setClientName]  = useState('')
+  const [xeroFile,    setXeroFile]    = useState('')
   const [description, setDescription] = useState('')
-  const [infoSaved, setInfoSaved] = useState(false)
+  const [pod,         setPod]         = useState('')
+  const [bookkeeper,  setBookkeeper]  = useState('')
+  const [trainerId,   setTrainerId]   = useState<string | null>(null)
+  const [infoSaved,   setInfoSaved]   = useState(false)
   const infoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Task tree
@@ -154,7 +157,7 @@ function ClientDetailInner({ params }: Params) {
   async function loadData() {
     setLoading(true)
     const [clientRes, taskRes, toolRes, assignRes, profileRes] = await Promise.all([
-      supabase.from('clients').select('id, name, xero_file, description').eq('id', clientId).single(),
+      supabase.from('clients').select('id, name, xero_file, description, pod, bookkeeper, trainer_id').eq('id', clientId).single(),
       supabase
         .from('client_tasks')
         .select('id, client_id, title, order_index, client_subtasks(id, client_task_id, title, video_url, order_index)')
@@ -180,6 +183,9 @@ function ClientDetailInner({ params }: Params) {
       setClientName(clientRes.data.name ?? '')
       setXeroFile(clientRes.data.xero_file ?? '')
       setDescription(clientRes.data.description ?? '')
+      setPod(clientRes.data.pod ?? '')
+      setBookkeeper(clientRes.data.bookkeeper ?? '')
+      setTrainerId(clientRes.data.trainer_id ?? null)
     }
 
     if (taskRes.data) {
@@ -213,11 +219,17 @@ function ClientDetailInner({ params }: Params) {
     infoSaveTimer.current = setTimeout(() => setInfoSaved(false), 2000)
   }
 
-  async function saveClientField(field: 'name' | 'xero_file' | 'description', value: string) {
+  async function saveClientField(field: string, value: string) {
     await supabase
       .from('clients')
       .update({ [field]: value.trim() || null })
       .eq('id', clientId)
+    flashSaved()
+  }
+
+  async function saveTrainer(id: string | null) {
+    setTrainerId(id)
+    await supabase.from('clients').update({ trainer_id: id || null }).eq('id', clientId)
     flashSaved()
   }
 
@@ -517,6 +529,49 @@ function ClientDetailInner({ params }: Params) {
             className="w-full text-xs text-slate-500 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-0.5 -mx-1.5 placeholder-slate-300 resize-none mt-0.5"
             placeholder="Add a description..."
           />
+
+          {/* Divider */}
+          <div className="border-t border-slate-100 mt-3 pt-3 space-y-2">
+
+            {/* Pod */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 px-1.5">Pod</p>
+              <input
+                value={pod}
+                onChange={(e) => setPod(e.target.value)}
+                onBlur={() => saveClientField('pod', pod)}
+                className="w-full text-xs text-slate-700 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-0.5 -mx-1.5 placeholder-slate-300"
+                placeholder="e.g. Jobelle"
+              />
+            </div>
+
+            {/* Bookkeeper */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 px-1.5">Bookkeeper</p>
+              <input
+                value={bookkeeper}
+                onChange={(e) => setBookkeeper(e.target.value)}
+                onBlur={() => saveClientField('bookkeeper', bookkeeper)}
+                className="w-full text-xs text-slate-700 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-0.5 -mx-1.5 placeholder-slate-300"
+                placeholder="e.g. Catherine"
+              />
+            </div>
+
+            {/* Trainer */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 px-1.5">Trainer</p>
+              <select
+                value={trainerId ?? ''}
+                onChange={(e) => saveTrainer(e.target.value || null)}
+                className="w-full text-xs text-slate-700 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-0.5 -mx-1.5 cursor-pointer"
+              >
+                <option value="">— Unassigned —</option>
+                {allProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* ── Task tree ────────────────────────────────────────────────────── */}
