@@ -32,7 +32,7 @@ export default async function LibraryPage() {
     const quiz        = (subject.quizzes as any[])?.[0] ?? null
     const quizPassed  = !quiz || passedQuizIds.has(quiz.id)
     const stepsAllDone = total > 0 && completed === total
-    const fullyDone   = stepsAllDone && quizPassed
+    const fullyDone   = quiz ? quizPassed : stepsAllDone
     const quizPending = stepsAllDone && !!quiz && !quizPassed
     const readMins    = Math.max(2, total * 3)
     return { subject, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, locked: false }

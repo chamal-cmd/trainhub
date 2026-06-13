@@ -55,7 +55,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     const stepsDone = allSteps.length > 0 && allSteps.every((id: string) => completedIds.has(id))
     const q = (s?.quizzes as any[])?.[0] ?? null
     const qPassed = !q || passedQuizIds.has(q.id)
-    return { orderIndex: s?.order_index ?? 999, fullyDone: stepsDone && qPassed }
+    return { orderIndex: s?.order_index ?? 999, fullyDone: q ? passedQuizIds.has(q.id) : stepsDone }
   })
 
   const modulesBeforeThis = allModules.filter((m: any) => m.orderIndex < thisOrderIndex)
