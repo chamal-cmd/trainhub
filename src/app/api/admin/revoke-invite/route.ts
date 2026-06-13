@@ -1,5 +1,3 @@
-export const runtime = 'edge'
-
 import { NextRequest, NextResponse } from 'next/server'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!

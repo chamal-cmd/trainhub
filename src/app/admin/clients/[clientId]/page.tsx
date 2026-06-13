@@ -24,7 +24,10 @@ import {
   BookOpen,
   X,
   Loader2,
+  Play,
+  Video,
 } from 'lucide-react'
+import { resolveEmbedUrl } from '@/lib/resolveEmbedUrl'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -66,7 +69,7 @@ type Profile = {
   email: string
 }
 
-type ActivePanel = 'overview' | 'tools' | 'assignments'
+type ActivePanel = 'overview' | 'tools' | 'assignments' | 'subtask'
 
 type Params = { params: Promise<{ clientId: string }> }
 
@@ -149,6 +152,29 @@ function ClientDetailInner({ params }: Params) {
   // Active panel
   const [activePanel, setActivePanel] = useState<ActivePanel>('overview')
 
+  // Selected subtask (library-style detail view) + expanded inline videos
+  const [selectedSubId, setSelectedSubId] = useState<string | null>(null)
+  const [expandedVids,  setExpandedVids]  = useState<Set<string>>(new Set())
+
+  // Accordion: which task group is open in the overview (one at a time)
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+
+  function toggleVid(id: string) {
+    setExpandedVids(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) s.delete(id)
+      else s.add(id)
+      return s
+    })
+  }
+
+  function openSubtask(subId: string, taskId: string) {
+    setSelectedSubId(subId)
+    setActivePanel('subtask')
+    setExpandedTasks(prev => new Set([...prev, taskId]))
+    setOpenTaskId(taskId)
+  }
+
   // Delete confirm
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -217,6 +243,7 @@ function ClientDetailInner({ params }: Params) {
       // Auto-expand first task
       if (sorted.length > 0) {
         setExpandedTasks(new Set([sorted[0].id]))
+        setOpenTaskId(sorted[0].id)
       }
     }
 
@@ -375,6 +402,10 @@ function ClientDetailInner({ params }: Params) {
           : t
       )
     )
+    if (selectedSubId === subtaskId) {
+      setSelectedSubId(null)
+      setActivePanel('overview')
+    }
   }
 
   // ── Access tool ops ───────────────────────────────────────────────────────
@@ -572,6 +603,13 @@ function ClientDetailInner({ params }: Params) {
   const totalSubtasks = tasks.reduce((sum, t) => sum + t.subtasks.length, 0)
   const assignedIds = new Set(assignments.map((a) => a.trainee_id))
 
+  // Flattened subtask list (sidebar order) for the detail view + prev/next nav
+  const flatSubs = tasks.flatMap((t) => t.subtasks.map((s) => ({ task: t, sub: s })))
+  const selIndex = flatSubs.findIndex((e) => e.sub.id === selectedSubId)
+  const selEntry = selIndex >= 0 ? flatSubs[selIndex] : null
+  const prevEntry = selIndex > 0 ? flatSubs[selIndex - 1] : null
+  const nextEntry = selIndex >= 0 && selIndex < flatSubs.length - 1 ? flatSubs[selIndex + 1] : null
+
   // ── Loading state ─────────────────────────────────────────────────────────
 
   if (loading) {
@@ -627,15 +665,6 @@ function ClientDetailInner({ params }: Params) {
             onBlur={() => saveClientField('name', clientName)}
             className="w-full text-sm font-bold text-slate-900 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-1 -mx-1.5 placeholder-slate-300"
             placeholder="Client name"
-          />
-
-          {/* Xero file */}
-          <input
-            value={xeroFile}
-            onChange={(e) => setXeroFile(e.target.value)}
-            onBlur={() => saveClientField('xero_file', xeroFile)}
-            className="w-full text-xs text-slate-500 bg-transparent border-0 outline-none focus:bg-slate-50 rounded-lg px-1.5 py-0.5 -mx-1.5 placeholder-slate-300 mt-0.5"
-            placeholder="Xero file name"
           />
 
           {/* Description */}
@@ -775,17 +804,26 @@ function ClientDetailInner({ params }: Params) {
                       return (
                         <div key={sub.id} className="group/sub">
                           <div
+                            onClick={() => openSubtask(sub.id, task.id)}
                             className={cn(
-                              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg mx-1 transition-colors',
-                              'hover:bg-slate-50 text-slate-600'
+                              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg mx-1 transition-colors cursor-pointer',
+                              activePanel === 'subtask' && selectedSubId === sub.id
+                                ? 'bg-violet-50 text-violet-700'
+                                : 'hover:bg-slate-50 text-slate-600'
                             )}
                           >
-                            <FileText className="w-3 h-3 shrink-0 text-slate-400" />
+                            {sub.video_url
+                              ? <Play className={cn('w-3 h-3 shrink-0',
+                                  activePanel === 'subtask' && selectedSubId === sub.id ? 'text-violet-500' : 'text-slate-400')} />
+                              : <FileText className={cn('w-3 h-3 shrink-0',
+                                  activePanel === 'subtask' && selectedSubId === sub.id ? 'text-violet-500' : 'text-slate-400')} />
+                            }
 
                             {isRenamingSub ? (
                               <input
                                 autoFocus
                                 value={renameSubtaskValue}
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={(e) => setRenameSubtaskValue(e.target.value)}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') renameSubtask(sub.id, task.id)
@@ -796,11 +834,12 @@ function ClientDetailInner({ params }: Params) {
                               />
                             ) : (
                               <span
-                                onDoubleClick={() => {
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation()
                                   setRenamingSubtaskId(sub.id)
                                   setRenameSubtaskValue(sub.title)
                                 }}
-                                className="flex-1 text-xs truncate cursor-text"
+                                className="flex-1 text-xs truncate"
                               >
                                 {sub.title}
                               </span>
@@ -973,9 +1012,6 @@ function ClientDetailInner({ params }: Params) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">{clientName || 'Client'}</h1>
-                {xeroFile && (
-                  <p className="text-xs text-slate-400 mt-0.5">Xero: <span className="text-slate-600 font-medium">{xeroFile}</span></p>
-                )}
               </div>
               <button
                 onClick={() => setActivePanel('overview')}
@@ -1026,170 +1062,80 @@ function ClientDetailInner({ params }: Params) {
               </button>
             </div>
 
-            {/* Task module cards — fully editable */}
-            <div className="space-y-4">
+            {/* Task section list — KB style */}
+            <div className="space-y-2.5">
               {tasks.length === 0 && !addingTask && (
                 <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
-                  <p className="text-sm text-slate-400">No modules yet.</p>
+                  <p className="text-sm text-slate-400">No sections yet.</p>
                   <p className="text-xs text-slate-300 mt-1">Add a task below or copy from the Knowledge Base above.</p>
                 </div>
               )}
 
-              {tasks.map((task) => (
-                <div key={task.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group/card">
+              {tasks.map((task) => {
+                const videoCount = task.subtasks.filter((s) => s.video_url).length
+                const firstSub   = task.subtasks.find((s) => s.video_url) ?? task.subtasks[0]
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => firstSub && openSubtask(firstSub.id, task.id)}
+                    className="group/row bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 px-6 py-5 hover:border-violet-300 hover:bg-violet-50/30 transition-all cursor-pointer"
+                  >
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 group-hover/row:bg-violet-50 group-hover/row:border-violet-200 transition-colors">
+                      <BookOpen className="w-5 h-5 text-slate-400 group-hover/row:text-violet-600 transition-colors" />
+                    </div>
 
-                  {/* ── Task header ── */}
-                  <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-                    <BarChart2 className="w-4 h-4 text-violet-600 shrink-0" />
+                    {/* Title + meta */}
+                    <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      {renamingTaskId === task.id ? (
+                        <input
+                          autoFocus
+                          value={renameTaskValue}
+                          onChange={(e) => setRenameTaskValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') renameTask(task.id)
+                            if (e.key === 'Escape') setRenamingTaskId(null)
+                          }}
+                          onBlur={() => renameTask(task.id)}
+                          className="w-full text-sm font-bold text-slate-900 border border-violet-400 rounded-lg px-2 py-0.5 outline-none bg-white"
+                        />
+                      ) : (
+                        <p
+                          onDoubleClick={() => { setRenamingTaskId(task.id); setRenameTaskValue(task.title) }}
+                          className="font-bold text-slate-900 text-sm"
+                          title="Double-click to rename"
+                        >
+                          {task.title}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {task.subtasks.length} subtask{task.subtasks.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
 
-                    {renamingTaskId === task.id ? (
-                      <input
-                        autoFocus
-                        value={renameTaskValue}
-                        onChange={(e) => setRenameTaskValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') renameTask(task.id)
-                          if (e.key === 'Escape') setRenamingTaskId(null)
-                        }}
-                        onBlur={() => renameTask(task.id)}
-                        className="flex-1 text-sm font-semibold text-slate-800 border border-violet-400 rounded-lg px-2 py-0.5 outline-none bg-white"
-                      />
-                    ) : (
-                      <h3
-                        onDoubleClick={() => { setRenamingTaskId(task.id); setRenameTaskValue(task.title) }}
-                        className="flex-1 font-semibold text-slate-800 text-sm cursor-text select-none"
-                        title="Double-click to rename"
-                      >
-                        {task.title}
-                      </h3>
+                    {/* Video count badge */}
+                    {videoCount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-600 bg-violet-50 rounded-full px-2.5 py-1 shrink-0">
+                        <Play className="w-3 h-3" />
+                        {videoCount} video{videoCount !== 1 ? 's' : ''}
+                      </span>
                     )}
 
-                    <span className="text-xs text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 shrink-0">
-                      {task.subtasks.length} subtask{task.subtasks.length !== 1 ? 's' : ''}
-                    </span>
-
+                    {/* Delete */}
                     <button
-                      onClick={() => deleteTask(task.id, task.title)}
-                      className="opacity-0 group-hover/card:opacity-100 p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all ml-1 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); deleteTask(task.id, task.title) }}
+                      className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all shrink-0"
                       title="Delete task"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
+
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover/row:text-violet-500 transition-colors shrink-0" />
                   </div>
+                )
+              })}
 
-                  {/* ── Subtask list ── */}
-                  <div className="divide-y divide-slate-100">
-                    {task.subtasks.map((sub) => (
-                      <div key={sub.id} className="group/sub px-5 py-3">
-
-                        {/* Title row */}
-                        <div className="flex items-start gap-3">
-                          <div className="w-4 h-4 mt-0.5 rounded border border-slate-200 shrink-0 flex items-center justify-center bg-slate-50">
-                            <div className="w-2 h-2 rounded-sm bg-slate-200" />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            {renamingSubtaskId === sub.id ? (
-                              <input
-                                autoFocus
-                                value={renameSubtaskValue}
-                                onChange={(e) => setRenameSubtaskValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') renameSubtask(sub.id, task.id)
-                                  if (e.key === 'Escape') setRenamingSubtaskId(null)
-                                }}
-                                onBlur={() => renameSubtask(sub.id, task.id)}
-                                className="w-full text-sm text-slate-700 border border-violet-400 rounded-lg px-2 py-0.5 outline-none bg-white"
-                              />
-                            ) : (
-                              <p
-                                onDoubleClick={() => { setRenamingSubtaskId(sub.id); setRenameSubtaskValue(sub.title) }}
-                                className="text-sm text-slate-700 cursor-text"
-                                title="Double-click to rename"
-                              >
-                                {sub.title}
-                              </p>
-                            )}
-
-                            {/* Video URL display / inline editor */}
-                            {editingVideoSubtaskId === sub.id ? (
-                              <input
-                                autoFocus
-                                value={editingVideoValue}
-                                onChange={(e) => setEditingVideoValue(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') saveSubtaskVideo(sub.id, task.id)
-                                  if (e.key === 'Escape') setEditingVideoSubtaskId(null)
-                                }}
-                                onBlur={() => saveSubtaskVideo(sub.id, task.id)}
-                                placeholder="Paste video URL (blank to remove)"
-                                className="w-full text-xs border border-violet-400 rounded-lg px-2 py-1 outline-none bg-white mt-1.5"
-                              />
-                            ) : sub.video_url ? (
-                              <button
-                                onClick={() => { setEditingVideoSubtaskId(sub.id); setEditingVideoValue(sub.video_url ?? '') }}
-                                className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline mt-0.5"
-                              >
-                                <Link2 className="w-3 h-3" />
-                                Training video
-                              </button>
-                            ) : null}
-                          </div>
-
-                          {/* Hover action buttons */}
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0 mt-0.5">
-                            <button
-                              onClick={() => { setEditingVideoSubtaskId(sub.id); setEditingVideoValue(sub.video_url ?? '') }}
-                              className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                              title="Set video URL"
-                            >
-                              <Link2 className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => deleteSubtask(sub.id, task.id)}
-                              className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                              title="Delete subtask"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* ── Add subtask row ── */}
-                  <div className="px-5 py-2.5 border-t border-dashed border-slate-100">
-                    {addingSubtaskForTask === task.id ? (
-                      <input
-                        autoFocus
-                        value={newSubtaskTitle}
-                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') addSubtask(task.id)
-                          if (e.key === 'Escape') setAddingSubtaskForTask(null)
-                        }}
-                        onBlur={() => {
-                          if (newSubtaskTitle.trim()) addSubtask(task.id)
-                          else setAddingSubtaskForTask(null)
-                        }}
-                        placeholder="New subtask title…"
-                        className="w-full text-sm border border-violet-400 rounded-xl px-3 py-1.5 outline-none bg-white"
-                      />
-                    ) : (
-                      <button
-                        onClick={() => { setAddingSubtaskForTask(task.id); setNewSubtaskTitle('') }}
-                        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-700 hover:bg-violet-50 rounded-lg px-1.5 py-1 -mx-1.5 w-full transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add subtask
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {/* ── Add new task ── */}
+              {/* Add new task */}
               <div>
                 {addingTask ? (
                   <input
@@ -1217,6 +1163,137 @@ function ClientDetailInner({ params }: Params) {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Subtask detail panel (library-style viewer/editor) ──────────── */}
+        {activePanel === 'subtask' && selEntry && (
+          <div className="max-w-3xl mx-auto px-8 py-8">
+
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-4">
+              <button
+                onClick={() => { setActivePanel('overview'); setSelectedSubId(null) }}
+                className="hover:text-violet-600 transition-colors"
+              >
+                {clientName || 'Client'}
+              </button>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-slate-500">{selEntry.task.title}</span>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-slate-600 font-medium truncate max-w-[200px]">{selEntry.sub.title}</span>
+            </div>
+
+            {/* Editable title */}
+            <input
+              key={selEntry.sub.id}
+              defaultValue={selEntry.sub.title}
+              onBlur={(e) => {
+                const v = e.target.value.trim()
+                if (v && v !== selEntry.sub.title) {
+                  setRenameSubtaskValue(v)
+                  supabase.from('client_subtasks').update({ title: v }).eq('id', selEntry.sub.id)
+                    .then(() => {
+                      setTasks((prev) => prev.map((t) =>
+                        t.id === selEntry.task.id
+                          ? { ...t, subtasks: t.subtasks.map((s) => s.id === selEntry.sub.id ? { ...s, title: v } : s) }
+                          : t
+                      ))
+                    })
+                }
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              className="w-full text-2xl font-bold text-slate-900 bg-transparent border-0 outline-none focus:bg-white focus:ring-2 focus:ring-violet-200 rounded-xl px-2 py-1 -mx-2 mb-5"
+              placeholder="Subtask title"
+            />
+
+            {/* Video player */}
+            {selEntry.sub.video_url ? (() => {
+              const embed = resolveEmbedUrl(selEntry.sub.video_url!)
+              return embed ? (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-black mb-5">
+                  <div className="aspect-video">
+                    <iframe
+                      key={embed}
+                      src={embed}
+                      className="w-full h-full"
+                      allowFullScreen
+                      allow="autoplay; encrypted-media; picture-in-picture"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 px-5 py-4 bg-white rounded-2xl border border-slate-200 shadow-sm mb-5">
+                  <Video className="w-4 h-4 text-purple-500 shrink-0" />
+                  <span className="text-sm text-slate-600 flex-1 truncate min-w-0">{selEntry.sub.video_url}</span>
+                  <a
+                    href={selEntry.sub.video_url!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                  >
+                    <Link2 className="w-3 h-3" /> Open link
+                  </a>
+                </div>
+              )
+            })() : (
+              <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-200 mb-5">
+                <Video className="w-8 h-8 text-slate-200 mb-2" />
+                <p className="text-sm font-semibold text-slate-400">No training video yet</p>
+                <p className="text-xs text-slate-300 mt-0.5">Paste a Loom / YouTube / Vimeo / Drive link below</p>
+              </div>
+            )}
+
+            {/* Video URL editor */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-5">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5 block">
+                Video URL
+              </label>
+              <input
+                key={`url-${selEntry.sub.id}`}
+                defaultValue={selEntry.sub.video_url ?? ''}
+                onBlur={(e) => {
+                  const url = e.target.value.trim() || null
+                  if (url !== (selEntry.sub.video_url ?? null)) {
+                    supabase.from('client_subtasks').update({ video_url: url }).eq('id', selEntry.sub.id)
+                      .then(() => {
+                        setTasks((prev) => prev.map((t) =>
+                          t.id === selEntry.task.id
+                            ? { ...t, subtasks: t.subtasks.map((s) => s.id === selEntry.sub.id ? { ...s, video_url: url } : s) }
+                            : t
+                        ))
+                      })
+                  }
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                placeholder="https://www.loom.com/share/…  (blank to remove)"
+                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
+              />
+            </div>
+
+            {/* Prev / Next / Delete */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => prevEntry && openSubtask(prevEntry.sub.id, prevEntry.task.id)}
+                disabled={!prevEntry}
+                className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-white border border-slate-200 shadow-sm text-sm font-semibold text-slate-600 hover:text-violet-700 hover:border-violet-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Previous
+              </button>
+              <button
+                onClick={() => nextEntry && openSubtask(nextEntry.sub.id, nextEntry.task.id)}
+                disabled={!nextEntry}
+                className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-white border border-slate-200 shadow-sm text-sm font-semibold text-slate-600 hover:text-violet-700 hover:border-violet-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => deleteSubtask(selEntry.sub.id, selEntry.task.id)}
+                className="ml-auto flex items-center gap-1.5 px-4 h-9 rounded-xl bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 text-sm font-semibold transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
             </div>
           </div>
         )}

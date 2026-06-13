@@ -35,7 +35,7 @@ export default function AssignmentsPage() {
         subjects(id, title, emoji, cover_color)
       `).order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').eq('role', 'user').order('full_name'),
-      supabase.from('subjects').select('id, title, emoji, cover_color').order('title'),
+      supabase.from('subjects').select('id, title, emoji, cover_color').order('order_index', { ascending: true }),
     ])
     setAssignments(a ?? [])
     setUsers(u ?? [])

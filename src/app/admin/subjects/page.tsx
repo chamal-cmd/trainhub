@@ -6,7 +6,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle, Clock, Globe, Lock, Eye } from 'lucide-react'
+import {
+  Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle,
+  Clock, Globe, Lock, Eye, GripVertical, ChevronUp, ChevronDown,
+  ArrowUpDown, Check,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string) {
@@ -28,6 +32,7 @@ type SubjectRow = {
   cover_color: string
   created_at: string
   updated_at: string
+  order_index: number
   topics: { id: string; steps: { id: string }[] }[]
   quizzes: { id: string }[]
   assignments: { id: string }[]
@@ -36,29 +41,53 @@ type SubjectRow = {
 export default function SubjectsPage() {
   const supabase = createClient()
   const router = useRouter()
-  const [subjects, setSubjects] = useState<SubjectRow[]>([])
-  const [totalUsers, setTotalUsers] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [subjects, setSubjects]       = useState<SubjectRow[]>([])
+  const [totalUsers, setTotalUsers]   = useState(0)
+  const [loading, setLoading]         = useState(true)
+  const [deleting, setDeleting]       = useState<string | null>(null)
   const [duplicating, setDuplicating] = useState<string | null>(null)
-  const [openMenu, setOpenMenu] = useState<string | null>(null)
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const [renaming, setRenaming]       = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [reorderMode, setReorderMode] = useState(false)
+  const [movingId, setMovingId]       = useState<string | null>(null)
 
   useEffect(() => { loadSubjects() }, [])
-
 
   async function loadSubjects() {
     const [subjectsRes, usersRes] = await Promise.all([
       supabase
         .from('subjects')
-        .select(`id, title, description, emoji, cover_color, created_at, updated_at, topics(id, steps(id)), quizzes(id), assignments(id)`)
-        .order('created_at', { ascending: false }),
+        .select(`id, title, description, emoji, cover_color, created_at, updated_at, order_index,
+                 topics(id, steps(id)), quizzes(id), assignments(id)`)
+        .order('order_index', { ascending: true }),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ])
     setSubjects(subjectsRes.data ?? [])
     setTotalUsers(usersRes.count ?? 0)
     setLoading(false)
+  }
+
+  async function moveSubject(id: string, direction: 'up' | 'down') {
+    const idx = subjects.findIndex(s => s.id === id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= subjects.length) return
+
+    setMovingId(id)
+    const a = subjects[idx]
+    const b = subjects[swapIdx]
+
+    // Swap order_index values
+    const newOrder = [...subjects]
+    newOrder[idx]  = { ...a, order_index: b.order_index }
+    newOrder[swapIdx] = { ...b, order_index: a.order_index }
+    newOrder.sort((x, y) => x.order_index - y.order_index)
+    setSubjects(newOrder)
+
+    await Promise.all([
+      supabase.from('subjects').update({ order_index: b.order_index }).eq('id', a.id),
+      supabase.from('subjects').update({ order_index: a.order_index }).eq('id', b.id),
+    ])
+    setMovingId(null)
   }
 
   async function deleteSubject(subject: SubjectRow) {
@@ -78,14 +107,13 @@ export default function SubjectsPage() {
         description: subject.description,
         emoji: subject.emoji,
         cover_color: subject.cover_color,
+        order_index: 999,
       })
       .select('id').single()
 
     if (newSubj) {
-      // Duplicate topics + steps
       const { data: topics } = await supabase
         .from('topics').select('*, steps(*)').eq('subject_id', subject.id).order('order_index')
-
       for (const topic of topics ?? []) {
         const { data: newTopic } = await supabase
           .from('topics')
@@ -95,7 +123,7 @@ export default function SubjectsPage() {
           for (const step of (topic.steps ?? []).sort((a: any, b: any) => a.order_index - b.order_index)) {
             await supabase.from('steps').insert({
               topic_id: newTopic.id, title: step.title,
-              order_index: step.order_index, content: step.content
+              order_index: step.order_index, content: step.content,
             })
           }
         }
@@ -130,129 +158,214 @@ export default function SubjectsPage() {
           <p className="text-slate-400 text-sm mt-0.5">
             {totalSubjects === 0
               ? 'Create your first training module to get started.'
-              : `${totalSubjects} module${totalSubjects !== 1 ? 's' : ''} · click any card to edit content`}
+              : `${totalSubjects} module${totalSubjects !== 1 ? 's' : ''} · ${reorderMode ? 'drag to reorder learning path' : 'click any card to edit content'}`}
           </p>
         </div>
-        <Link href="/admin/subjects/new">
-          <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
-            <Plus className="w-4 h-4" />
-            New Module
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setReorderMode(r => !r)}
+            className={cn(
+              'flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border',
+              reorderMode
+                ? 'bg-violet-700 text-white border-violet-700'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:text-violet-700'
+            )}
+          >
+            {reorderMode ? <><Check className="w-4 h-4" /> Done Reordering</> : <><ArrowUpDown className="w-4 h-4" /> Reorder</>}
           </button>
-        </Link>
+          <Link href="/admin/subjects/new">
+            <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+              <Plus className="w-4 h-4" /> New Module
+            </button>
+          </Link>
+        </div>
       </div>
 
       {subjects.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {subjects.map((subject, i) => {
-            const topicsCount = subject.topics?.length ?? 0
-            const stepsCount = subject.topics?.reduce((acc, t) => acc + (t.steps?.length ?? 0), 0) ?? 0
-            const hasQuiz = subject.quizzes?.length > 0
-            const accessCount = subject.assignments?.length ?? 0
-            const isEveryone = totalUsers > 0 && accessCount >= totalUsers
-            const isRestricted = !isEveryone
-            const isDeleting = deleting === subject.id
-            const isDuplicating = duplicating === subject.id
+        reorderMode ? (
+          /* ── Reorder mode: clean list with up/down arrows ─────────────────── */
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+            {subjects.map((subject, i) => {
+              const isFirst = i === 0
+              const isLast  = i === subjects.length - 1
+              const isMoving = movingId === subject.id
 
-            return (
-              <div
-                key={subject.id}
-                className={cn(
-                  'bg-white rounded-2xl border border-slate-100 hover:border-violet-300 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
-                  isDeleting && 'opacity-50 pointer-events-none'
-                )}
-                style={{ animationDelay: `${i * 0.04}s` }}
-              >
-                {/* Color strip */}
-                <div className="h-1 w-full" style={{ backgroundColor: subject.cover_color }} />
+              return (
+                <div
+                  key={subject.id}
+                  className={cn(
+                    'flex items-center gap-4 px-5 py-3.5 transition-colors',
+                    isMoving ? 'bg-violet-50' : 'hover:bg-slate-50'
+                  )}
+                >
+                  {/* Grip icon */}
+                  <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
 
-                <div className="p-5">
-                  {/* Icon + title + menu */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-transform group-hover:scale-105"
-                      style={{ backgroundColor: subject.cover_color + '1A', boxShadow: `0 0 0 1px ${subject.cover_color}20` }}
-                    >
-                      {subject.emoji}
-                    </div>
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors leading-snug line-clamp-1">
-                        {subject.title}
-                      </h3>
-                      {subject.description ? (
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{subject.description}</p>
-                      ) : (
-                        <p className="text-xs text-slate-300 mt-0.5 italic">No description</p>
-                      )}
-                    </div>
-
+                  {/* Position badge */}
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-slate-400">{i + 1}</span>
                   </div>
 
-                  {/* Stats + edit button */}
-                  <div className="flex items-center gap-1 pt-4 border-t border-slate-50 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
-                      <BookOpen className="w-3 h-3" />
-                      {topicsCount} topic{topicsCount !== 1 ? 's' : ''}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
-                      <FileText className="w-3 h-3" />
-                      {stepsCount} step{stepsCount !== 1 ? 's' : ''}
-                    </div>
-                    {hasQuiz && (
-                      <div className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 rounded-lg px-2.5 py-1.5">
-                        <HelpCircle className="w-3 h-3" /> Quiz
-                      </div>
-                    )}
-                    {isRestricted ? (
-                      <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5" title={`Only ${accessCount} ${accessCount === 1 ? 'person has' : 'people have'} access`}>
-                        <Lock className="w-3 h-3" /> {accessCount} {accessCount === 1 ? 'person' : 'people'}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5" title="Everyone has access">
-                        <Globe className="w-3 h-3" /> Everyone
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 text-[11px] text-slate-300 ml-1">
-                      <Clock className="w-3 h-3" />
-                      {timeAgo(subject.updated_at || subject.created_at)}
-                    </div>
-                    <div className="ml-auto flex items-center gap-1.5">
-                      <Link href={`/training/${subject.id}`} target="_blank" onClick={e => e.stopPropagation()}>
-                        <div className="p-1.5 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-all" title="Preview as learner">
-                          <Eye className="w-3.5 h-3.5" />
+                  {/* Emoji */}
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                    style={{ backgroundColor: subject.cover_color + '1A' }}
+                  >
+                    {subject.emoji}
+                  </div>
+
+                  {/* Title */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{subject.title}</p>
+                    <p className="text-xs text-slate-400">
+                      {subject.topics?.length ?? 0} topics · {subject.topics?.reduce((a, t) => a + (t.steps?.length ?? 0), 0) ?? 0} steps
+                    </p>
+                  </div>
+
+                  {/* Color strip */}
+                  <div className="w-3 h-7 rounded-full shrink-0" style={{ backgroundColor: subject.cover_color }} />
+
+                  {/* Up/Down arrows */}
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button
+                      onClick={() => moveSubject(subject.id, 'up')}
+                      disabled={isFirst || isMoving}
+                      className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Move up"
+                    >
+                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                    </button>
+                    <button
+                      onClick={() => moveSubject(subject.id, 'down')}
+                      disabled={isLast || isMoving}
+                      className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Move down"
+                    >
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          /* ── Normal mode: card grid ───────────────────────────────────────── */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {subjects.map((subject, i) => {
+              const topicsCount = subject.topics?.length ?? 0
+              const stepsCount  = subject.topics?.reduce((acc, t) => acc + (t.steps?.length ?? 0), 0) ?? 0
+              const hasQuiz     = subject.quizzes?.length > 0
+              const accessCount = subject.assignments?.length ?? 0
+              const isEveryone  = totalUsers > 0 && accessCount >= totalUsers
+              const isDeleting  = deleting === subject.id
+
+              return (
+                <div
+                  key={subject.id}
+                  className={cn(
+                    'bg-white rounded-2xl border border-slate-100 hover:border-violet-300 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative',
+                    isDeleting && 'opacity-50 pointer-events-none'
+                  )}
+                  style={{ animationDelay: `${i * 0.04}s` }}
+                >
+                  {/* Color strip */}
+                  <div className="h-1 w-full" style={{ backgroundColor: subject.cover_color }} />
+
+                  <div className="p-5">
+                    {/* Position badge + icon + title */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="relative shrink-0">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-105"
+                          style={{ backgroundColor: subject.cover_color + '1A', boxShadow: `0 0 0 1px ${subject.cover_color}20` }}
+                        >
+                          {subject.emoji}
                         </div>
-                      </Link>
-                      <button
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); deleteSubject(subject) }}
-                        disabled={isDeleting}
-                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
-                        title="Delete module"
-                      >
-                        {isDeleting
-                          ? <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
-                          : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
-                      <Link href={`/admin/subjects/${subject.id}`}>
-                        <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                          Edit <ArrowRight className="w-3 h-3" />
+                        {subject.order_index < 900 && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-100 border border-white flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-slate-500">{i + 1}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors leading-snug line-clamp-1">
+                          {subject.title}
+                        </h3>
+                        {subject.description ? (
+                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{subject.description}</p>
+                        ) : (
+                          <p className="text-xs text-slate-300 mt-0.5 italic">No description</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stats + actions */}
+                    <div className="flex items-center gap-1 pt-4 border-t border-slate-50 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                        <BookOpen className="w-3 h-3" />
+                        {topicsCount} topic{topicsCount !== 1 ? 's' : ''}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                        <FileText className="w-3 h-3" />
+                        {stepsCount} step{stepsCount !== 1 ? 's' : ''}
+                      </div>
+                      {hasQuiz && (
+                        <div className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 rounded-lg px-2.5 py-1.5">
+                          <HelpCircle className="w-3 h-3" /> Quiz
                         </div>
-                      </Link>
+                      )}
+                      {isEveryone ? (
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5">
+                          <Globe className="w-3 h-3" /> Everyone
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                          <Lock className="w-3 h-3" /> {accessCount}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-[11px] text-slate-300 ml-1">
+                        <Clock className="w-3 h-3" />
+                        {timeAgo(subject.updated_at || subject.created_at)}
+                      </div>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <Link href={`/training/${subject.id}`} target="_blank" onClick={e => e.stopPropagation()}>
+                          <div className="p-1.5 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-all" title="Preview as learner">
+                            <Eye className="w-3.5 h-3.5" />
+                          </div>
+                        </Link>
+                        <button
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); deleteSubject(subject) }}
+                          disabled={isDeleting}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
+                          title="Delete module"
+                        >
+                          {isDeleting
+                            ? <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                        <Link href={`/admin/subjects/${subject.id}`}>
+                          <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                            Edit <ArrowRight className="w-3 h-3" />
+                          </div>
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
 
-          {/* Add new card */}
-          <Link href="/admin/subjects/new">
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/30 transition-all cursor-pointer group flex flex-col items-center justify-center py-12 px-6 min-h-[160px]">
-              <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-violet-100 flex items-center justify-center mb-3 transition-colors">
-                <Plus className="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition-colors" />
+            {/* Add new card */}
+            <Link href="/admin/subjects/new">
+              <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/30 transition-all cursor-pointer group flex flex-col items-center justify-center py-12 px-6 min-h-[160px]">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-violet-100 flex items-center justify-center mb-3 transition-colors">
+                  <Plus className="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition-colors" />
+                </div>
+                <p className="text-sm font-semibold text-slate-400 group-hover:text-violet-700 transition-colors">New Module</p>
               </div>
-              <p className="text-sm font-semibold text-slate-400 group-hover:text-violet-700 transition-colors">New Module</p>
-            </div>
-          </Link>
-        </div>
+            </Link>
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-slate-200">
           <div className="w-20 h-20 bg-violet-50 rounded-3xl flex items-center justify-center mb-5">

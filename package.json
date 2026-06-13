@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint"
   },
@@ -59,7 +59,9 @@
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",
+    "@opennextjs/cloudflare": "^1.19.11",
     "playwright": "^1.60.0",
-    "tweetsodium": "^0.0.4"
+    "tweetsodium": "^0.0.4",
+    "wrangler": "^4.100.0"
   }
 }

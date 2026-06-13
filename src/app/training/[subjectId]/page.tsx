@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { UserClientWrapper } from '@/components/shared/UserClientWrapper'
 import {
   ArrowLeft, CheckCircle2, ChevronRight,
@@ -20,7 +20,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [profileRes, assignmentRes, subjectRes, stepProgressRes, allAssignmentsRes] = await Promise.all([
+  const [profileRes, assignmentRes, subjectRes, stepProgressRes, allAssignmentsRes, allSubjectsRes] = await Promise.all([
     supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
     supabase.from('assignments').select('id, due_date').eq('subject_id', subjectId).eq('user_id', user.id).single(),
     supabase
@@ -31,7 +31,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
       .eq('id', subjectId)
       .single(),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
-    supabase.from('assignments').select('subjects(topics(steps(id)))').eq('user_id', user.id),
+    supabase.from('assignments').select('subjects(id, order_index, topics(id, steps(id)), quizzes(id))').eq('user_id', user.id),
+    supabase.from('subjects').select('id, order_index').eq('id', subjectId).single(),
   ])
 
   let quizAttemptsRes: { data: any[] | null } = { data: [] }
@@ -50,6 +51,22 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const completedIds       = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
   const passedQuizIds      = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
   const passedTopicQuizIds = new Set(topicQuizRes.data?.filter(r => r.passed).map(r => r.topic_id) ?? [])
+
+  // Check if this module is locked (previous assigned module not fully complete)
+  const thisOrderIndex = (allSubjectsRes.data as any)?.order_index ?? 999
+  const assignedModules = (allAssignmentsRes.data ?? [])
+    .map((a: any) => {
+      const s = a.subjects as any
+      const allSteps: string[] = s?.topics?.flatMap((t: any) => t.steps?.map((st: any) => st.id) ?? []) ?? []
+      const stepsDone = allSteps.length > 0 && allSteps.every(id => completedIds.has(id))
+      const q = (s?.quizzes as any[])?.[0] ?? null
+      const qPassed = !q || passedQuizIds.has(q.id)
+      return { orderIndex: s?.order_index ?? 999, fullyDone: stepsDone && qPassed }
+    })
+    .sort((a: any, b: any) => a.orderIndex - b.orderIndex)
+
+  const modulesBeforeThis = assignedModules.filter((m: any) => m.orderIndex < thisOrderIndex)
+  const isModuleLocked = !isAdmin && modulesBeforeThis.some((m: any) => !m.fullyDone)
 
   const topics = (subject.topics ?? [])
     .sort((a: any, b: any) => a.order_index - b.order_index)
@@ -96,6 +113,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     const prevStepsDone = prev.steps.length > 0 && prev.steps.every((s: any) => completedIds.has(s.id))
     return prevStepsDone ? `Pass the quiz in "${prev.title}" to unlock` : `Complete "${prev.title}" first`
   }
+
+  if (isModuleLocked) redirect('/library')
 
   return (
     <UserClientWrapper userName={userName} userRole={userRole} completionRate={completionRate}>

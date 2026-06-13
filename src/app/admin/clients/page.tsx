@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
-import { Plus, Building2, ChevronRight, Users, BookOpen, Loader2 } from 'lucide-react'
+import { Plus, Building2, ChevronRight, Users, BookOpen, Loader2, Trash2 } from 'lucide-react'
 
 interface ClientRow {
   id: string
@@ -22,6 +23,7 @@ interface ClientRow {
 }
 
 export default function AdminClientsPage() {
+  const router = useRouter()
   const supabase = createClient()
   const [clients, setClients]   = useState<ClientRow[]>([])
   const [loading, setLoading]   = useState(true)
@@ -34,7 +36,17 @@ export default function AdminClientsPage() {
 
   useEffect(() => { load() }, [])
 
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [needsMigration, setNeedsMigration] = useState(false)
+
+  async function handleDelete(e: React.MouseEvent, id: string, name: string) {
+    e.stopPropagation()
+    if (!confirm(`Delete "${name}"? All tasks and assignments will be permanently removed.`)) return
+    setDeletingId(id)
+    await supabase.from('clients').delete().eq('id', id)
+    setClients(prev => prev.filter(c => c.id !== id))
+    setDeletingId(null)
+  }
 
   async function load() {
     setLoading(true)
@@ -134,7 +146,6 @@ export default function AdminClientsPage() {
             <thead>
               <tr className="border-b border-slate-100">
                 <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">Client</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">Xero File</th>
                 <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">Tasks</th>
                 <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-5 py-3">Trainees</th>
                 <th className="px-5 py-3 w-10" />
@@ -142,7 +153,11 @@ export default function AdminClientsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {clients.map(c => (
-                <tr key={c.id} className="group hover:bg-slate-50 transition-colors">
+                <tr
+                  key={c.id}
+                  className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/admin/clients/${c.id}`)}
+                >
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
@@ -156,7 +171,6 @@ export default function AdminClientsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-4 hidden sm:table-cell text-slate-500">{c.xero_file || '—'}</td>
                   <td className="px-5 py-4">
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 rounded-lg px-2.5 py-1">
                       <BookOpen className="w-3 h-3" /> {c.task_count}
@@ -168,11 +182,24 @@ export default function AdminClientsPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <Link href={`/admin/clients/${c.id}`}>
-                      <button className="p-2 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors opacity-0 group-hover:opacity-100">
-                        <ChevronRight className="w-4 h-4" />
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={(e) => handleDelete(e, c.id, c.name)}
+                        disabled={deletingId === c.id}
+                        className="p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                        title="Delete client"
+                      >
+                        {deletingId === c.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Trash2 className="w-4 h-4" />
+                        }
                       </button>
-                    </Link>
+                      <Link href={`/admin/clients/${c.id}`}>
+                        <button className="p-2 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
