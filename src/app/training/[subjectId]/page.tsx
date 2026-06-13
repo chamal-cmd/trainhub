@@ -20,19 +20,17 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [profileRes, assignmentRes, subjectRes, stepProgressRes, allAssignmentsRes, allSubjectsRes] = await Promise.all([
+  const [profileRes, subjectRes, stepProgressRes, allSubjectsRes] = await Promise.all([
     supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
-    supabase.from('assignments').select('id, due_date').eq('subject_id', subjectId).eq('user_id', user.id).single(),
     supabase
       .from('subjects')
-      .select(`id, title, description, emoji, cover_color,
+      .select(`id, title, description, emoji, cover_color, order_index,
         topics(id, title, order_index, steps(id, title, order_index)),
         quizzes(id, title, passing_score)`)
       .eq('id', subjectId)
       .single(),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
-    supabase.from('assignments').select('subjects(id, order_index, topics(id, steps(id)), quizzes(id))').eq('user_id', user.id),
-    supabase.from('subjects').select('id, order_index').eq('id', subjectId).single(),
+    supabase.from('subjects').select('id, order_index, topics(id, steps(id)), quizzes(id)').order('order_index', { ascending: true }),
   ])
 
   let quizAttemptsRes: { data: any[] | null } = { data: [] }
@@ -40,32 +38,27 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   try { quizAttemptsRes = await supabase.from('quiz_attempts').select('quiz_id, passed, score').eq('user_id', user.id) } catch {}
   try { topicQuizRes = await supabase.from('topic_quiz_completions').select('topic_id, passed').eq('user_id', user.id) } catch {}
 
-  const profile    = profileRes.data
-  const assignment = assignmentRes.data
-  const subject    = subjectRes.data
-  const isAdmin    = profile?.role === 'admin'
+  const profile = profileRes.data
+  const subject = subjectRes.data
+  const isAdmin = profile?.role === 'admin'
 
   if (!subject) notFound()
-  if (!assignment && !isAdmin) notFound()
 
   const completedIds       = new Set(stepProgressRes.data?.map(p => p.step_id) ?? [])
   const passedQuizIds      = new Set(quizAttemptsRes.data?.filter(a => a.passed).map(a => a.quiz_id) ?? [])
   const passedTopicQuizIds = new Set(topicQuizRes.data?.filter(r => r.passed).map(r => r.topic_id) ?? [])
 
-  // Check if this module is locked (previous assigned module not fully complete)
-  const thisOrderIndex = (allSubjectsRes.data as any)?.order_index ?? 999
-  const assignedModules = (allAssignmentsRes.data ?? [])
-    .map((a: any) => {
-      const s = a.subjects as any
-      const allSteps: string[] = s?.topics?.flatMap((t: any) => t.steps?.map((st: any) => st.id) ?? []) ?? []
-      const stepsDone = allSteps.length > 0 && allSteps.every(id => completedIds.has(id))
-      const q = (s?.quizzes as any[])?.[0] ?? null
-      const qPassed = !q || passedQuizIds.has(q.id)
-      return { orderIndex: s?.order_index ?? 999, fullyDone: stepsDone && qPassed }
-    })
-    .sort((a: any, b: any) => a.orderIndex - b.orderIndex)
+  // Check if this module is locked (previous module not fully complete)
+  const thisOrderIndex = subject.order_index ?? 999
+  const allModules = (allSubjectsRes.data ?? []).map((s: any) => {
+    const allSteps: string[] = s?.topics?.flatMap((t: any) => t.steps?.map((st: any) => st.id) ?? []) ?? []
+    const stepsDone = allSteps.length > 0 && allSteps.every((id: string) => completedIds.has(id))
+    const q = (s?.quizzes as any[])?.[0] ?? null
+    const qPassed = !q || passedQuizIds.has(q.id)
+    return { orderIndex: s?.order_index ?? 999, fullyDone: stepsDone && qPassed }
+  })
 
-  const modulesBeforeThis = assignedModules.filter((m: any) => m.orderIndex < thisOrderIndex)
+  const modulesBeforeThis = allModules.filter((m: any) => m.orderIndex < thisOrderIndex)
   const isModuleLocked = !isAdmin && modulesBeforeThis.some((m: any) => !m.fullyDone)
 
   const topics = (subject.topics ?? [])
@@ -81,8 +74,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const quizPassed     = quiz ? passedQuizIds.has(quiz.id) : false
   const color          = subject.cover_color || '#7C3AED'
 
-  const allIds: string[] = (allAssignmentsRes.data ?? []).flatMap((a: any) =>
-    (a.subjects as any)?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
+  const allIds: string[] = (allSubjectsRes.data ?? []).flatMap((s: any) =>
+    s?.topics?.flatMap((t: any) => t.steps?.map((st: any) => st.id) ?? []) ?? []
   )
   const completionRate = allIds.length > 0
     ? Math.round((allIds.filter(id => completedIds.has(id)).length / allIds.length) * 100) : 0
