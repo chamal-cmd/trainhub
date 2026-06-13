@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUser, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
 import {
-  Clock, AlertTriangle, BookOpen, Zap,
+  Clock, BookOpen, Zap,
   CheckCircle2, ArrowRight, Trophy, Flame, TrendingUp
 } from 'lucide-react'
 import { AiLaunchCard } from '@/components/shared/AiLaunchCard'
@@ -17,11 +17,11 @@ export default async function UserDashboard() {
 
   const supabase = await createClient()
 
-  const [assignmentsRes, progressRes, profile] = await Promise.all([
+  const [subjectsRes, progressRes, profile] = await Promise.all([
     supabase
-      .from('assignments')
-      .select('id, due_date, subjects(id, title, emoji, cover_color, topics(id, steps(id)))')
-      .eq('user_id', user.id),
+      .from('subjects')
+      .select('id, title, emoji, cover_color, order_index, topics(id, steps(id))')
+      .order('order_index', { ascending: true }),
     supabase
       .from('step_progress')
       .select('step_id, completed_at')
@@ -30,38 +30,26 @@ export default async function UserDashboard() {
     getProfile(user.id),
   ])
 
-  const assignments  = assignmentsRes.data ?? []
+  const subjects    = subjectsRes.data ?? []
   const stepProgress = progressRes.data ?? []
   const completedIds = new Set(stepProgress.map((p: any) => p.step_id))
   const firstName    = (profile?.full_name ?? '').split(' ')[0] || 'there'
 
-  // Build enriched module list
-  const modules = assignments.map(a => {
-    const subject     = a.subjects as any
+  const modules = subjects.map((subject: any) => {
     const allSteps: string[] = subject?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
-    const completed   = allSteps.filter(id => completedIds.has(id)).length
-    const total       = allSteps.length
-    const percent     = total > 0 ? Math.round((completed / total) * 100) : 0
-    const readMins    = Math.max(2, total * 3)
-    const dueDate     = a.due_date ? new Date(a.due_date) : null
-    const now         = new Date()
-    const overdueDays = dueDate && dueDate < now && percent < 100
-      ? Math.floor((now.getTime() - dueDate.getTime()) / 86400000) : 0
-    const color       = subject?.cover_color || '#7C3AED'
-    return { subject, dueDate, readMins, overdueDays, percent, completed, total, color }
+    const completed = allSteps.filter(id => completedIds.has(id)).length
+    const total     = allSteps.length
+    const percent   = total > 0 ? Math.round((completed / total) * 100) : 0
+    const readMins  = Math.max(2, total * 3)
+    const color     = subject?.cover_color || '#7C3AED'
+    return { subject, readMins, percent, completed, total, color }
   })
 
-  const inProgress  = modules.filter(m => m.percent > 0 && m.percent < 100)
-  const todo        = modules.filter(m => m.percent === 0)
-  const done        = modules.filter(m => m.percent === 100)
+  const inProgress = modules.filter(m => m.percent > 0 && m.percent < 100)
+  const todo       = modules.filter(m => m.percent === 0)
+  const done       = modules.filter(m => m.percent === 100)
 
-  const allTodo = [...inProgress, ...todo].sort((a, b) => {
-    if (a.overdueDays > 0 && b.overdueDays <= 0) return -1
-    if (b.overdueDays > 0 && a.overdueDays <= 0) return 1
-    if (a.percent > 0 && b.percent === 0) return -1
-    if (b.percent > 0 && a.percent === 0) return 1
-    return 0
-  })
+  const allTodo = [...inProgress, ...todo]
 
   // Overall stats
   const totalSteps     = modules.reduce((s, m) => s + m.total, 0)
@@ -70,11 +58,10 @@ export default async function UserDashboard() {
 
   // Most recently active module (Jump Back In)
   const stepToSubjectId = new Map<string, string>()
-  for (const a of assignments) {
-    const s = a.subjects as any
-    for (const t of s?.topics ?? [])
+  for (const subject of subjects) {
+    for (const t of (subject as any).topics ?? [])
       for (const step of t.steps ?? [])
-        stepToSubjectId.set(step.id, s.id)
+        stepToSubjectId.set(step.id, (subject as any).id)
   }
   const modBySubjectId = new Map(modules.map(m => [m.subject.id, m]))
   let jumpBackMod: typeof modules[0] | null = null
@@ -109,14 +96,13 @@ export default async function UserDashboard() {
                 ? `You have ${allTodo.length} module${allTodo.length !== 1 ? 's' : ''} to work through.${inProgress.length > 0 ? ` ${inProgress.length} in progress.` : ''}`
                 : done.length > 0
                 ? 'All modules complete — amazing work! 🏆'
-                : 'No training assigned yet.'}
+                : 'No modules available yet.'}
             </p>
           </div>
 
-          {/* Stats row */}
           {modules.length > 0 && (
             <div className="flex items-center gap-4 shrink-0">
-              <StatPill icon={<BookOpen className="w-3.5 h-3.5" />} value={modules.length} label="Assigned" color="violet" />
+              <StatPill icon={<BookOpen className="w-3.5 h-3.5" />} value={modules.length} label="Modules" color="violet" />
               <StatPill icon={<Zap className="w-3.5 h-3.5" />} value={inProgress.length} label="In progress" color="orange" />
               <StatPill icon={<CheckCircle2 className="w-3.5 h-3.5" />} value={done.length} label="Completed" color="emerald" />
             </div>
@@ -164,14 +150,13 @@ export default async function UserDashboard() {
               </section>
             )}
 
-            {/* Empty */}
             {modules.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200">
                 <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
                   <BookOpen className="w-7 h-7 text-violet-400" />
                 </div>
-                <p className="font-bold text-slate-700 text-lg">No training assigned yet</p>
-                <p className="text-slate-400 text-sm mt-1.5">Your administrator will assign modules soon.</p>
+                <p className="font-bold text-slate-700 text-lg">No modules available yet</p>
+                <p className="text-slate-400 text-sm mt-1.5">Check back soon.</p>
               </div>
             )}
           </div>
@@ -179,10 +164,8 @@ export default async function UserDashboard() {
           {/* ── Right: sidebar widgets ── */}
           <div className="w-60 shrink-0 space-y-4">
 
-            {/* AI card */}
             <AiLaunchCard />
 
-            {/* Overall progress ring */}
             {modules.length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Overall progress</p>
@@ -190,7 +173,6 @@ export default async function UserDashboard() {
               </div>
             )}
 
-            {/* Weekly streak */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Flame className="w-4 h-4 text-orange-400" />
@@ -267,11 +249,8 @@ function StatPill({ icon, value, label, color }: { icon: React.ReactNode; value:
   )
 }
 
-// ── Jump Back In — featured hero card ────────────────────────────────────────
-
 function JumpBackCard({ m }: { m: any }) {
   const color = m.color || '#7C3AED'
-  const firstTopic = m.subject?.topics?.[0]
   const href = `/training/${m.subject.id}`
 
   return (
@@ -281,7 +260,6 @@ function JumpBackCard({ m }: { m: any }) {
         style={{ background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`, borderColor: `${color}30` }}
       >
         <div className="flex items-center gap-6 px-6 py-5">
-          {/* Emoji */}
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-sm"
             style={{ background: `${color}25` }}
@@ -289,7 +267,6 @@ function JumpBackCard({ m }: { m: any }) {
             {m.subject.emoji || '📚'}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color }}>Continue learning</p>
             <h3 className="font-bold text-slate-900 text-lg leading-tight truncate">{m.subject.title}</h3>
@@ -302,7 +279,6 @@ function JumpBackCard({ m }: { m: any }) {
             </div>
           </div>
 
-          {/* Arrow */}
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
             style={{ background: color }}
@@ -315,11 +291,9 @@ function JumpBackCard({ m }: { m: any }) {
   )
 }
 
-// ── Module Card ───────────────────────────────────────────────────────────────
-
 function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
   const color = isDone ? '#10b981' : (m.color || '#7C3AED')
-  const { subject, dueDate, readMins, overdueDays, percent, completed, total } = m
+  const { subject, readMins, percent, completed, total } = m
 
   return (
     <Link href={`/training/${subject.id}`}>
@@ -327,7 +301,6 @@ function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
         'group bg-white rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg',
         isDone ? 'border-emerald-100 opacity-80 hover:opacity-100' : 'border-slate-200 hover:border-violet-200',
       )}>
-        {/* Card header with colour strip */}
         <div
           className="px-5 pt-5 pb-4"
           style={{ borderBottom: `2px solid ${color}20` }}
@@ -339,11 +312,7 @@ function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
             >
               {subject.emoji || <BookOpen className="w-5 h-5" />}
             </div>
-            {overdueDays > 0 ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 rounded-lg px-2 py-1 shrink-0">
-                <AlertTriangle className="w-3 h-3" /> {overdueDays}d overdue
-              </span>
-            ) : isDone ? (
+            {isDone ? (
               <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1 shrink-0">
                 <CheckCircle2 className="w-3 h-3" /> Done
               </span>
@@ -361,7 +330,6 @@ function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
           </h3>
         </div>
 
-        {/* Progress + meta */}
         <div className="px-5 py-3.5">
           {!isDone && (
             <div className="mb-3">
@@ -398,8 +366,6 @@ function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
   )
 }
 
-// ── Progress Ring (SVG donut) ─────────────────────────────────────────────────
-
 function ProgressRing({ pct, inProgress, done, total }: { pct: number; inProgress: number; done: number; total: number }) {
   const r = 52; const cx = 68; const cy = 68
   const circ = 2 * Math.PI * r
@@ -411,23 +377,19 @@ function ProgressRing({ pct, inProgress, done, total }: { pct: number; inProgres
     <div className="flex flex-col items-center">
       <div className="relative">
         <svg width="136" height="136" viewBox="0 0 136 136">
-          {/* Track */}
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="13" />
-          {/* Not started (light grey) */}
           {remaining > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="13"
               strokeDasharray={`${remaining * circ} ${circ}`}
               strokeDashoffset={-(doneFrac + progressFrac) * circ + circ * 0.25}
               strokeLinecap="round" />
           )}
-          {/* In progress (orange) */}
           {progressFrac > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fb923c" strokeWidth="13"
               strokeDasharray={`${progressFrac * circ} ${circ}`}
               strokeDashoffset={-doneFrac * circ + circ * 0.25}
               strokeLinecap="round" />
           )}
-          {/* Completed (violet) */}
           {doneFrac > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#7C3AED" strokeWidth="13"
               strokeDasharray={`${doneFrac * circ} ${circ}`}
@@ -459,5 +421,4 @@ function LegendRow({ color, label, value }: { color: string; label: string; valu
   )
 }
 
-// React type import needed for JSX
 import React from 'react'
