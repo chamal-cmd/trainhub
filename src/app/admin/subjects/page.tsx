@@ -329,8 +329,8 @@ export default function SubjectsPage() {
                       </div>
                       <div className="ml-auto flex items-center gap-1.5">
                         <Link href={`/training/${subject.id}`} target="_blank" onClick={e => e.stopPropagation()}>
-                          <div className="p-1.5 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-all" title="Preview as learner">
-                            <Eye className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-1 text-xs text-slate-600 font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 px-2.5 py-1.5 rounded-lg transition-colors">
+                            <Eye className="w-3 h-3" /> Preview
                           </div>
                         </Link>
                         <button

@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
-import { getUser } from '@/lib/supabase/queries'
+import { getUser, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
-import { CheckCircle2, Clock, Lock, ChevronRight, Trophy, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clock, Lock, ChevronRight, Trophy, Sparkles, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default async function LibraryPage() {
@@ -12,14 +12,17 @@ export default async function LibraryPage() {
 
   const supabase = await createClient()
 
-  const [subjectsRes, progressRes, quizAttemptsRes] = await Promise.all([
+  const [subjectsRes, progressRes, quizAttemptsRes, profile] = await Promise.all([
     supabase
       .from('subjects')
       .select('id, title, description, emoji, cover_color, order_index, topics(id, steps(id)), quizzes(id)')
       .order('order_index', { ascending: true }),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
     supabase.from('quiz_attempts').select('quiz_id').eq('user_id', user.id).eq('passed', true),
+    getProfile(user.id),
   ])
+
+  const isAdmin = profile?.role === 'admin'
 
   const completedStepIds = new Set((progressRes.data ?? []).map((p: any) => p.step_id))
   const passedQuizIds    = new Set((quizAttemptsRes.data ?? []).map((a: any) => a.quiz_id))
@@ -38,10 +41,12 @@ export default async function LibraryPage() {
     return { subject, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, locked: false }
   })
 
-  // Sequential lock: each module locks until the previous is fully done (steps + quiz)
-  for (let i = 1; i < modules.length; i++) {
-    if (!modules[i - 1].fullyDone) {
-      modules[i].locked = true
+  // Sequential lock: only for regular users
+  if (!isAdmin) {
+    for (let i = 1; i < modules.length; i++) {
+      if (!modules[i - 1].fullyDone) {
+        modules[i].locked = true
+      }
     }
   }
 
@@ -51,6 +56,13 @@ export default async function LibraryPage() {
 
   return (
     <div className="px-6 py-7 min-h-full bg-[#f8f8f8]">
+      {/* Admin preview banner */}
+      {isAdmin && (
+        <div className="flex items-center gap-2.5 bg-violet-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl mb-5">
+          <ShieldCheck className="w-4 h-4 shrink-0" />
+          Admin preview — all modules are accessible. Users see sequential locking.
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
