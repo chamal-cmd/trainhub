@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Profile, Subject, Assignment } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, ClipboardList, Trash2, Users, BookOpen } from 'lucide-react'
+import { Plus, ClipboardList, Trash2, Users, BookOpen, CalendarDays } from 'lucide-react'
 
 export default function AssignmentsPage() {
   const supabase = createClient()
@@ -34,7 +34,7 @@ export default function AssignmentsPage() {
         profiles!assignments_user_id_fkey(id, full_name, email),
         subjects(id, title, emoji, cover_color)
       `).order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').eq('role', 'user').order('full_name'),
+      supabase.from('profiles').select('*').neq('role', 'admin').order('full_name'),
       supabase.from('subjects').select('id, title, emoji, cover_color').order('order_index', { ascending: true }),
     ])
     setAssignments(a ?? [])
@@ -179,7 +179,7 @@ export default function AssignmentsPage() {
         </div>
       )}
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={v => { setShowModal(v); if (!v) { setSelSubject(''); setSelUser(''); setDueDate(''); setError('') } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Training Module</DialogTitle>
@@ -209,12 +209,15 @@ export default function AssignmentsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Due Date (optional)</Label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-              />
+              <div className="relative">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent cursor-pointer"
+                />
+              </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <DialogFooter className="gap-2 flex-wrap">
