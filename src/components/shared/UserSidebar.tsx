@@ -4,12 +4,21 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, TrendingUp, Award, LogOut, GraduationCap } from 'lucide-react'
+import {
+  LayoutDashboard, BookOpen, Building2, Wrench,
+  TrendingUp, Award, LogOut, GraduationCap,
+} from 'lucide-react'
 
-const navItems = [
-  { href: '/dashboard', label: 'My Training',  icon: LayoutDashboard, exact: true },
-  { href: '/profile',   label: 'My Progress',  icon: TrendingUp },
-  { href: '/profile',   label: 'Certificates', icon: Award, disabled: false },
+const learnItems = [
+  { href: '/dashboard',        label: 'My Training',     icon: LayoutDashboard, exact: true },
+  { href: '/library',          label: 'Library',         icon: BookOpen },
+  { href: '/client-training',  label: 'Client Training', icon: Building2 },
+  { href: '/tools',            label: 'Tools',           icon: Wrench },
+]
+
+const accountItems = [
+  { href: '/profile', label: 'My Progress',  icon: TrendingUp },
+  { href: '/profile', label: 'Certificates', icon: Award, soon: true },
 ]
 
 export function UserSidebar({ userName }: { userName?: string }) {
@@ -26,6 +35,28 @@ export function UserSidebar({ userName }: { userName?: string }) {
   function isActive(href: string, exact?: boolean) {
     if (exact) return pathname === href
     return pathname.startsWith(href)
+  }
+
+  function NavLink({ item }: { item: typeof learnItems[0] & { soon?: boolean } }) {
+    const active = isActive(item.href, (item as any).exact)
+    return (
+      <Link
+        href={item.href}
+        className={cn(
+          'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+          active
+            ? 'bg-violet-700 text-white shadow-md shadow-violet-900/50'
+            : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'
+        )}
+      >
+        <item.icon className={cn('w-4 h-4 shrink-0 transition-transform group-hover:scale-110', active ? 'text-white' : 'text-violet-400/70')} />
+        <span className="flex-1 tracking-tight">{item.label}</span>
+        {(item as any).soon && !active && (
+          <span className="text-[10px] text-violet-500 bg-violet-600/10 px-1.5 py-0.5 rounded-full font-semibold">Soon</span>
+        )}
+        {active && <div className="w-1.5 h-1.5 rounded-full bg-white/70" />}
+      </Link>
+    )
   }
 
   return (
@@ -45,53 +76,17 @@ export function UserSidebar({ userName }: { userName?: string }) {
 
       {/* Nav */}
       <nav className="flex-1 px-2 pt-4 space-y-5">
-        {/* Main */}
         <div>
-          <p className="px-3 pb-1.5 text-[10px] font-semibold text-violet-500/50 uppercase tracking-widest">
-            Main
-          </p>
+          <p className="px-3 pb-1.5 text-[10px] font-semibold text-violet-500/50 uppercase tracking-widest">Learn</p>
           <div className="space-y-0.5">
-            {[navItems[0], navItems[1]].map((item) => {
-              const active = isActive(item.href, item.exact)
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                    active
-                      ? 'bg-violet-700 text-white shadow-md shadow-violet-900/50'
-                      : 'text-violet-300/80 hover:bg-white/[0.07] hover:text-white'
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      'w-4 h-4 shrink-0 transition-transform group-hover:scale-110',
-                      active ? 'text-white' : 'text-violet-400/70'
-                    )}
-                  />
-                  <span className="flex-1 tracking-tight">{item.label}</span>
-                  {active && <div className="w-1.5 h-1.5 rounded-full bg-white/70" />}
-                </Link>
-              )
-            })}
+            {learnItems.map(item => <NavLink key={item.label} item={item} />)}
           </div>
         </div>
 
-        {/* Achievements */}
         <div>
-          <p className="px-3 pb-1.5 text-[10px] font-semibold text-violet-500/50 uppercase tracking-widest">
-            Achievements
-          </p>
+          <p className="px-3 pb-1.5 text-[10px] font-semibold text-violet-500/50 uppercase tracking-widest">Account</p>
           <div className="space-y-0.5">
-            <Link
-              href="/profile"
-              className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-violet-300/80 hover:bg-white/[0.07] hover:text-white transition-all"
-            >
-              <Award className="w-4 h-4 shrink-0 text-violet-400/70 group-hover:scale-110 transition-transform" />
-              <span className="flex-1 tracking-tight">Certificates</span>
-              <span className="text-[10px] text-violet-600 bg-violet-600/10 px-1.5 py-0.5 rounded-full font-semibold">Soon</span>
-            </Link>
+            {accountItems.map(item => <NavLink key={item.label} item={item} />)}
           </div>
         </div>
       </nav>

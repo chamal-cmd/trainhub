@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Search, Sparkles, Settings, LogOut, PanelLeftOpen, PanelLeftClose, ShieldCheck,
+  Search, Sparkles, Settings, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { AiAssistantPanel } from './AiAssistantPanel'
 
@@ -13,11 +13,9 @@ interface UserTopBarProps {
   userName: string
   userRole: string
   completionRate: number
-  sidebarOpen: boolean
-  onToggle: () => void
 }
 
-export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, onToggle }: UserTopBarProps) {
+export function UserTopBar({ userName, userRole, completionRate }: UserTopBarProps) {
   const [aiOpen,       setAiOpen]       = useState(false)
   const [menuOpen,     setMenuOpen]     = useState(false)
   const [searchQuery,  setSearchQuery]  = useState('')
@@ -71,17 +69,6 @@ export function UserTopBar({ userName, userRole, completionRate, sidebarOpen, on
     <>
       {/* ── Top bar ── */}
       <header className="h-14 bg-white border-b border-slate-200 flex items-center gap-3 px-4 shrink-0 z-20">
-        {/* Sidebar toggle */}
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors shrink-0"
-          title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-        >
-          {sidebarOpen
-            ? <PanelLeftClose className="w-5 h-5" />
-            : <PanelLeftOpen  className="w-5 h-5" />}
-        </button>
-
         {/* Search bar */}
         <div className="flex-1 max-w-xl">
           <div className="relative">

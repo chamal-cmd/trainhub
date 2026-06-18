@@ -355,23 +355,18 @@ export default function TopicPage({ params }: PageParams) {
                 })()}
 
                 {/* Text content */}
-                {currentStep.content && Object.keys(currentStep.content).length > 0 && (
-                  (() => {
-                    const paragraphs = (currentStep.content as any)?.content ?? []
-                    const hasText = paragraphs.some((node: any) =>
-                      node?.content?.some((c: any) => c?.text?.trim())
-                    )
-                    if (!hasText) return null
-                    return (
-                      <div className={cn(
-                        'rounded-2xl border p-6 mb-6 transition-all',
-                        isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
-                      )}>
-                        <RichTextEditor content={currentStep.content} readOnly />
-                      </div>
-                    )
-                  })()
-                )}
+                {currentStep.content && (() => {
+                  const nodes = (currentStep.content as any)?.content
+                  if (!Array.isArray(nodes) || nodes.length === 0) return null
+                  return (
+                    <div className={cn(
+                      'rounded-2xl border p-6 mb-6 transition-all',
+                      isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
+                    )}>
+                      <RichTextEditor key={currentStep.id} content={currentStep.content} readOnly />
+                    </div>
+                  )
+                })()}
 
                 {/* Navigation */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
