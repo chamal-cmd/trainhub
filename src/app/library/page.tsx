@@ -215,7 +215,7 @@ export default async function LibraryPage() {
 
       {/* ── Client SOPs Section ───────────────────────────────────────────── */}
       {sopModules.length > 0 && (
-        <div className="mt-10 max-w-2xl">
+        <div id="sops" className="mt-10 max-w-2xl">
           {/* Section header */}
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">

@@ -6,13 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, BookOpen, Building2, Wrench,
-  TrendingUp, Award, LogOut, GraduationCap,
+  TrendingUp, Award, LogOut, GraduationCap, FolderOpen,
 } from 'lucide-react'
 
 const learnItems = [
   { href: '/dashboard',        label: 'My Training',     icon: LayoutDashboard, exact: true },
   { href: '/library',          label: 'Library',         icon: BookOpen },
   { href: '/client-training',  label: 'Client Training', icon: Building2 },
+  { href: '/library#sops',     label: 'Client SOPs',     icon: FolderOpen },
   { href: '/tools',            label: 'Tools',           icon: Wrench },
 ]
 
@@ -33,8 +34,9 @@ export function UserSidebar({ userName }: { userName?: string }) {
   }
 
   function isActive(href: string, exact?: boolean) {
-    if (exact) return pathname === href
-    return pathname.startsWith(href)
+    const path = href.split('#')[0]
+    if (exact) return pathname === path
+    return pathname.startsWith(path)
   }
 
   function NavLink({ item }: { item: typeof learnItems[0] & { soon?: boolean } }) {
