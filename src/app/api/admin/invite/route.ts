@@ -52,8 +52,13 @@ export async function POST(req: NextRequest) {
         redirect_to: `${origin}/auth/callback`,
       }),
     })
-    const invData = await invRes.json()
-    if (!invRes.ok) return NextResponse.json({ error: invData?.msg || invData?.message || 'Invite failed' }, { status: 400 })
+    const invText = await invRes.text()
+    let invData: any = {}
+    try { invData = JSON.parse(invText) } catch { /* non-JSON response */ }
+    if (!invRes.ok) {
+      const msg = invData?.msg || invData?.message || invData?.error_description || invText || 'Invite failed'
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
 
     const userId = invData.id
     if (!userId) return NextResponse.json({ error: 'No user id from invite' }, { status: 500 })
