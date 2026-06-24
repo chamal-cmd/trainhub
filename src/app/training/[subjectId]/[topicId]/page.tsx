@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
   CheckCircle2, ArrowLeft, ArrowRight, Check, BookOpen,
-  Menu, X, FileText, Video, File, Download, Sparkles
+  Menu, X, FileText, Video, File, Download, Sparkles, ChevronDown
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -82,6 +82,12 @@ export default function TopicPage({ params }: PageParams) {
 
   // Quiz modal
   const [showQuiz, setShowQuiz] = useState(false)
+
+  // SOP expand state: set of attachment indices that are expanded
+  const [expandedSops, setExpandedSops] = useState<Set<string>>(new Set())
+  function toggleSop(key: string) {
+    setExpandedSops(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+  }
 
   useEffect(() => { loadData() }, [topicId])
 
@@ -304,8 +310,53 @@ export default function TopicPage({ params }: PageParams) {
                       {atts.map((att: any, idx: number) => {
                         const isVideo      = att.type === 'video_url'
                         const isPdf        = att.type === 'pdf'
+                        const isSop        = att.type === 'sop'
                         const embedUrl     = isVideo ? resolveEmbedUrl(att.url) : null
                         const isEmbeddable = embedUrl !== null
+                        const sopKey       = `${currentStep.id}-${idx}`
+                        const sopExpanded  = expandedSops.has(sopKey)
+
+                        if (isSop) return (
+                          <div key={idx} className="border border-amber-200 bg-amber-50/30 rounded-xl overflow-hidden">
+                            {/* SOP header row */}
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                                  <FileText className="w-4 h-4 text-amber-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-800">Standard Operating Procedure</p>
+                                  <p className="text-xs text-slate-500">{att.name}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={att.url}
+                                  download
+                                  className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                  <Download className="w-3 h-3" /> Download
+                                </a>
+                                {att.content && (
+                                  <button
+                                    onClick={() => toggleSop(sopKey)}
+                                    className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                                  >
+                                    <ChevronDown className={cn('w-3 h-3 transition-transform', sopExpanded && 'rotate-180')} />
+                                    {sopExpanded ? 'Collapse' : 'View SOP'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {/* Expandable SOP content */}
+                            {sopExpanded && att.content && (
+                              <div className="border-t border-amber-200 bg-white px-6 py-5">
+                                <RichTextEditor content={att.content} readOnly />
+                              </div>
+                            )}
+                          </div>
+                        )
+
                         return (
                           <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
                             {isEmbeddable && embedUrl ? (
