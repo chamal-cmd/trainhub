@@ -35,6 +35,7 @@ function LoginPageInner() {
     if (!raw) return ''
     if (raw === 'access_denied') return 'Google sign-in was cancelled.'
     if (raw === 'auth_failed')   return 'Sign-in failed. Please try again.'
+    if (raw === 'not_invited')   return 'TrainHub is for GP Bookkeeper team members only. Contact your administrator to request access.'
     return `Sign-in error: ${decodeURIComponent(raw)}.`
   })
   useState(() => { if (searchParams.get('error')) router.replace('/login') })

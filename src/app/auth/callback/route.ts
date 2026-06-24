@@ -38,7 +38,13 @@ export async function GET(request: NextRequest) {
           .eq('id', user.id)
           .single()
 
-        const role        = profile?.role ?? 'user'
+        // Block access for anyone not explicitly invited by an admin
+        if (!profile) {
+          await supabase.auth.signOut()
+          return NextResponse.redirect(new URL('/login?error=not_invited', origin))
+        }
+
+        const role        = profile.role
         const destination = role === 'admin' ? '/admin' : '/dashboard'
         const isPopup     = searchParams.get('popup') === '1'
         const type        = searchParams.get('type')
