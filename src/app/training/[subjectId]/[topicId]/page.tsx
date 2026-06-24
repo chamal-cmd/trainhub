@@ -125,9 +125,10 @@ export default function TopicPage({ params }: PageParams) {
     // Load progress
     const { data: progress } = await supabase
       .from('step_progress').select('step_id').eq('user_id', user.id)
-    setCompletedIds(new Set(progress?.map(p => p.step_id) ?? []))
+    const completedSet = new Set(progress?.map(p => p.step_id) ?? [])
+    setCompletedIds(completedSet)
 
-    // Load sibling topics to find the next one
+    // Load sibling topics to find the next one + enforce sequential lock
     const { data: allTopics } = await supabase
       .from('topics')
       .select('id, order_index, steps(id, order_index)')
@@ -136,6 +137,21 @@ export default function TopicPage({ params }: PageParams) {
 
     if (allTopics) {
       const idx  = allTopics.findIndex(t => t.id === topicId)
+
+      // Check if this topic is locked (previous topic not fully completed)
+      const { data: profileData } = await supabase
+        .from('profiles').select('role').eq('id', user.id).single()
+      const isAdmin = profileData?.role === 'admin'
+      if (!isAdmin && idx > 0) {
+        const prev = allTopics[idx - 1]
+        const prevSteps = (prev.steps as any[]) ?? []
+        const prevLocked = prevSteps.length > 0 && !prevSteps.every((s: any) => completedSet.has(s.id))
+        if (prevLocked) {
+          router.replace(`/training/${subjectId}`)
+          return
+        }
+      }
+
       const next = allTopics[idx + 1]
       if (next) {
         const firstStep = ((next.steps as any[]) ?? []).sort((a: any, b: any) => a.order_index - b.order_index)[0]

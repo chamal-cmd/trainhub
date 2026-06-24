@@ -89,7 +89,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     if (total === 0)   return 'empty'
     if (done === 0)    return 'not_started'
     if (done < total)  return 'in_progress'
-    if (!passedTopicQuizIds.has(t.id)) return 'quiz_pending'
+    // All steps done — show quiz badge if topic has a pending quiz, otherwise completed
+    if (passedTopicQuizIds.size > 0 && !passedTopicQuizIds.has(t.id)) return 'quiz_pending'
     return 'completed'
   }
 
@@ -97,7 +98,8 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     if (isAdmin || index === 0) return false
     const prev = topics[index - 1]
     if (prev.steps.length === 0) return false
-    return !passedTopicQuizIds.has(prev.id)
+    // Unlock when all steps of the previous topic are completed (quiz not required to proceed)
+    return !prev.steps.every((s: any) => completedIds.has(s.id))
   }
 
   function topicLockReason(index: number): string {
