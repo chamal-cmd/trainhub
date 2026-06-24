@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import type { Profile } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, Search, Users, Mail, Shield, User, Clock, X, Loader2 } from 'lucide-react'
+import { Plus, Search, Users, Mail, Shield, User, Clock, X, Loader2, Trash2 } from 'lucide-react'
 
 type PendingInvite = { id: string; email: string; full_name: string; role: 'user'|'admin'; invited_at: string }
 
@@ -32,8 +32,13 @@ export default function UsersPage() {
   const [inviteSuccess, setInviteSuccess] = useState<{email: string; role: 'user'|'admin'; inviteUrl?: string} | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState('')
 
-  useEffect(() => { loadUsers(); loadPending() }, [])
+  useEffect(() => {
+    loadUsers(); loadPending()
+    supabase.auth.getUser().then(({ data }) => { if (data.user) setCurrentUserId(data.user.id) })
+  }, [])
 
   async function loadUsers() {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
@@ -68,6 +73,21 @@ export default function UsersPage() {
     if (!res.ok) { alert(json.error); setRevoking(null); return }
     setPendingInvites(prev => prev.filter(p => p.id !== invite.id))
     setRevoking(null)
+  }
+
+  async function removeUser(user: Profile) {
+    if (!confirm(`Remove ${user.full_name} (${user.email})? This cannot be undone.`)) return
+    setRemoving(user.id)
+    const auth = await getAuthHeader()
+    const res = await fetch('/api/admin/delete-user', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({ userId: user.id }),
+    })
+    const json = await res.json()
+    if (!res.ok) { alert(json.error); setRemoving(null); return }
+    setUsers(prev => prev.filter(u => u.id !== user.id))
+    setRemoving(null)
   }
 
   async function handleInvite(e: React.FormEvent) {
@@ -197,7 +217,7 @@ export default function UsersPage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" /> Administrators ({admins.length})
               </h2>
-              <UserList users={admins} />
+              <UserList users={admins} currentUserId={currentUserId} removing={removing} onRemove={removeUser} />
             </div>
           )}
           {regularUsers.length > 0 && (
@@ -205,7 +225,7 @@ export default function UsersPage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" /> Team Members ({regularUsers.length})
               </h2>
-              <UserList users={regularUsers} />
+              <UserList users={regularUsers} currentUserId={currentUserId} removing={removing} onRemove={removeUser} />
             </div>
           )}
           {filtered.length === 0 && (
@@ -353,7 +373,12 @@ export default function UsersPage() {
   )
 }
 
-function UserList({ users }: { users: Profile[] }) {
+function UserList({ users, currentUserId, removing, onRemove }: {
+  users: Profile[]
+  currentUserId: string
+  removing: string | null
+  onRemove: (user: Profile) => void
+}) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       {users.map((user, i) => (
@@ -372,6 +397,18 @@ function UserList({ users }: { users: Profile[] }) {
             {user.role === 'admin' ? '🛡️ Admin' : 'User'}
           </Badge>
           <span className="text-xs text-slate-400 hidden sm:block">{formatDate(user.created_at)}</span>
+          {user.id !== currentUserId && (
+            <button
+              onClick={() => onRemove(user)}
+              disabled={removing === user.id}
+              className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 shrink-0"
+              title="Remove user"
+            >
+              {removing === user.id
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Trash2 className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       ))}
     </div>
