@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
@@ -88,6 +88,12 @@ export default function TopicPage({ params }: PageParams) {
   function toggleSop(key: string) {
     setExpandedSops(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
   }
+
+  // Scroll content area to top whenever the step changes
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentStepIdx])
 
   useEffect(() => { loadData() }, [topicId])
 
@@ -284,7 +290,7 @@ export default function TopicPage({ params }: PageParams) {
 
           {/* Content */}
           {currentStep ? (
-            <div className="flex-1 overflow-y-auto">
+            <div ref={contentScrollRef} className="flex-1 overflow-y-auto">
               <div className="max-w-2xl mx-auto px-8 py-10">
                 {/* Step header */}
                 <div className="mb-8">
