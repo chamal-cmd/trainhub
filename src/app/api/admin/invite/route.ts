@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Admin Supabase client (server-side only)
+function adminClient() {
+  return createSupabaseClient(SB_URL, SVC, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
 // Verify the caller is an admin using pure fetch (no supabase-js package)
 async function verifyAdmin(token: string): Promise<string | null> {
-  // Get user from JWT
   const r1 = await fetch(`${SB_URL}/auth/v1/user`, {
     headers: { 'apikey': ANON, 'Authorization': `Bearer ${token}` },
   })
@@ -14,7 +21,6 @@ async function verifyAdmin(token: string): Promise<string | null> {
   const user = await r1.json()
   if (!user?.id) return null
 
-  // Check admin role in profiles
   const r2 = await fetch(`${SB_URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
     headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
   })
@@ -38,29 +44,18 @@ export async function POST(req: NextRequest) {
       ? `https://${req.headers.get('x-forwarded-host')}`
       : new URL(req.url).origin
 
-    // Send invite via Supabase Admin API
-    const invRes = await fetch(`${SB_URL}/auth/v1/admin/invite`, {
-      method: 'POST',
-      headers: {
-        'apikey': SVC,
-        'Authorization': `Bearer ${SVC}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        data: { full_name: fullName },
-        redirect_to: `${origin}/auth/callback`,
-      }),
+    // Send invite via Supabase JS admin client
+    const supabase = adminClient()
+    const { data: invData, error: invError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: fullName },
+      redirectTo: `${origin}/auth/callback`,
     })
-    const invText = await invRes.text()
-    let invData: any = {}
-    try { invData = JSON.parse(invText) } catch { /* non-JSON response */ }
-    if (!invRes.ok) {
-      const msg = invData?.msg || invData?.message || invData?.error_description || invText || 'Invite failed'
-      return NextResponse.json({ error: msg }, { status: 400 })
+
+    if (invError) {
+      return NextResponse.json({ error: invError.message }, { status: 400 })
     }
 
-    const userId = invData.id
+    const userId = invData?.user?.id
     if (!userId) return NextResponse.json({ error: 'No user id from invite' }, { status: 500 })
 
     // Set role in profiles
