@@ -8,6 +8,7 @@ import {
   Search, Sparkles, Settings, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { AiAssistantPanel } from './AiAssistantPanel'
+import { CommandPalette } from './CommandPalette'
 
 interface UserTopBarProps {
   userName: string
@@ -16,9 +17,9 @@ interface UserTopBarProps {
 }
 
 export function UserTopBar({ userName, userRole, completionRate }: UserTopBarProps) {
-  const [aiOpen,       setAiOpen]       = useState(false)
-  const [menuOpen,     setMenuOpen]     = useState(false)
-  const [searchQuery,  setSearchQuery]  = useState('')
+  const [aiOpen,     setAiOpen]     = useState(false)
+  const [menuOpen,   setMenuOpen]   = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -31,19 +32,19 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [menuOpen])
 
-  // Ctrl+K global shortcut to open/close AI panel
+  // Ctrl+K → open search palette
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
-        setAiOpen(v => !v)
+        setSearchOpen(v => !v)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Open panel when AI launch card fires the custom event
+  // Open AI panel when launch card fires custom event
   useEffect(() => {
     function onQuery() { setAiOpen(true) }
     window.addEventListener('ai-panel-query', onQuery)
@@ -69,18 +70,18 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
     <>
       {/* ── Top bar ── */}
       <header className="h-14 bg-white border-b border-slate-200 flex items-center gap-3 px-4 shrink-0 z-20">
-        {/* Search bar */}
+        {/* Search trigger */}
         <div className="flex-1 max-w-xl">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search or ask a question"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-4 rounded-full bg-slate-100 border border-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-300 transition-all"
-            />
-          </div>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full h-9 flex items-center gap-2.5 px-3 rounded-full bg-slate-100 hover:bg-slate-200 border border-transparent transition-all group text-left"
+          >
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <span className="flex-1 text-sm text-slate-400 truncate">Search modules, steps, tools…</span>
+            <kbd className="hidden sm:flex items-center gap-0.5 h-5 px-1.5 rounded border border-slate-300/60 bg-white/80 text-[10px] font-medium text-slate-400 shrink-0">
+              Ctrl K
+            </kbd>
+          </button>
         </div>
 
         {/* Right icons */}
@@ -155,6 +156,12 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
         onClose={() => setAiOpen(false)}
         userName={userName}
         completionRate={completionRate}
+      />
+
+      {/* ── Command Palette ── */}
+      <CommandPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
       />
     </>
   )
