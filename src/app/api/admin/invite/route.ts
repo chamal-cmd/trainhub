@@ -131,12 +131,16 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({ id: userId, email, full_name: fullName ?? email.split('@')[0], role }),
     })
 
-    // Send invite email via Resend (reliable delivery)
+    // Send invite email via Resend (best-effort — may fail if domain unverified)
     if (resendKey && inviteUrl) {
-      await sendInviteEmail(email, fullName, inviteUrl, role, resendKey)
+      try {
+        await sendInviteEmail(email, fullName, inviteUrl, role, resendKey)
+      } catch {
+        // email failed — caller still gets the invite link
+      }
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, inviteUrl })
   } catch (e: any) {
     return NextResponse.json({ error: `Exception: ${e?.message ?? String(e)}` }, { status: 500 })
   }

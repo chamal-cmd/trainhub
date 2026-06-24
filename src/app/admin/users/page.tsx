@@ -29,7 +29,8 @@ export default function UsersPage() {
   const [invitePassword, setInvitePassword] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
-  const [inviteSuccess, setInviteSuccess] = useState<{email: string; role: 'user'|'admin'} | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<{email: string; role: 'user'|'admin'; inviteUrl?: string} | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [revoking, setRevoking] = useState<string | null>(null)
 
   useEffect(() => { loadUsers(); loadPending() }, [])
@@ -78,40 +79,37 @@ export default function UsersPage() {
     const sentRole = inviteRole
     const sentName = inviteName
 
-    // ── Show success instantly (optimistic UI) ──
+    // ── Close modal immediately ──
     setShowInvite(false)
     setInviteEmail('')
     setInviteName('')
-    setInviteSuccess({ email: sentTo, role: sentRole })
 
-    // ── Send invite in background — doesn't block the UI ──
-    getAuthHeader().then(auth => fetch('/api/admin/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...auth },
-      body: JSON.stringify({ email: sentTo, fullName: sentName, role: sentRole, sendInvite: true }),
-    })).then(async res => {
+    // ── Send invite, then show success with link ──
+    try {
+      const auth = await getAuthHeader()
+      const res  = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...auth },
+        body: JSON.stringify({ email: sentTo, fullName: sentName, role: sentRole }),
+      })
       const json = await res.json()
       if (!res.ok) {
-        // Rollback: reopen modal with error
-        setInviteSuccess(null)
         setInviteEmail(sentTo)
         setInviteName(sentName)
         setInviteRole(sentRole)
         setInviteError(json.error ?? 'Failed to invite user')
         setShowInvite(true)
       } else {
-        // Refresh lists quietly in background
+        setInviteSuccess({ email: sentTo, role: sentRole, inviteUrl: json.inviteUrl })
         Promise.all([loadUsers(), loadPending()]).catch(() => {})
       }
-    }).catch(() => {
-      // Network error — rollback
-      setInviteSuccess(null)
+    } catch {
       setInviteEmail(sentTo)
       setInviteName(sentName)
       setInviteRole(sentRole)
       setInviteError('Network error — please try again.')
       setShowInvite(true)
-    })
+    }
   }
 
   const filtered = users.filter(u =>
@@ -242,14 +240,29 @@ export default function UsersPage() {
                 </span>.
               </p>
 
-              <div className="bg-slate-50 rounded-xl px-4 py-3 mb-5 text-left">
-                <p className="text-xs text-slate-500 mb-1 font-medium">What happens next:</p>
-                <ol className="text-xs text-slate-600 space-y-1">
-                  <li>1. They receive an email with a secure link</li>
-                  <li>2. They click it → set their password</li>
-                  <li>3. They're in as {inviteSuccess.role === 'admin' ? 'Admin' : 'Team Member'} ✅</li>
-                </ol>
-              </div>
+              {inviteSuccess.inviteUrl && (
+                <div className="bg-slate-50 rounded-xl px-4 py-3 mb-4 text-left">
+                  <p className="text-xs text-slate-500 mb-2 font-medium">Share this invite link directly:</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={inviteSuccess.inviteUrl}
+                      className="flex-1 text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 truncate text-slate-600 outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteSuccess.inviteUrl!)
+                        setLinkCopied(true)
+                        setTimeout(() => setLinkCopied(false), 2000)
+                      }}
+                      className="shrink-0 text-xs px-3 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium text-slate-700 transition-colors"
+                    >
+                      {linkCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1.5">Send this link via Slack, Teams, or email. Expires in 24 hours.</p>
+                </div>
+              )}
 
               <button
                 onClick={() => setInviteSuccess(null)}
