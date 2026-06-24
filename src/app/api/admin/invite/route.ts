@@ -5,14 +5,12 @@ const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Admin Supabase client (server-side only)
 function adminClient() {
   return createSupabaseClient(SB_URL, SVC, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }
 
-// Verify the caller is an admin using pure fetch (no supabase-js package)
 async function verifyAdmin(token: string): Promise<string | null> {
   const r1 = await fetch(`${SB_URL}/auth/v1/user`, {
     headers: { 'apikey': ANON, 'Authorization': `Bearer ${token}` },
@@ -27,6 +25,22 @@ async function verifyAdmin(token: string): Promise<string | null> {
   if (!r2.ok) return null
   const profiles = await r2.json()
   return profiles?.[0]?.role === 'admin' ? user.id : null
+}
+
+// Find an existing auth user by email (handles re-invite case)
+async function findUserByEmail(email: string): Promise<string | null> {
+  const supabase = adminClient()
+  // Page through users to find by email (Supabase has no direct email lookup)
+  let page = 1
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+    if (error || !data?.users?.length) break
+    const match = data.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+    if (match) return match.id
+    if (data.users.length < 1000) break
+    page++
+  }
+  return null
 }
 
 export async function POST(req: NextRequest) {
@@ -44,21 +58,31 @@ export async function POST(req: NextRequest) {
       ? `https://${req.headers.get('x-forwarded-host')}`
       : new URL(req.url).origin
 
-    // Send invite via Supabase JS admin client
     const supabase = adminClient()
+
+    // Try to send invite
     const { data: invData, error: invError } = await supabase.auth.admin.inviteUserByEmail(email, {
       data: { full_name: fullName },
       redirectTo: `${origin}/auth/callback`,
     })
 
+    let userId: string | null = invData?.user?.id ?? null
+
     if (invError) {
-      return NextResponse.json({ error: invError.message }, { status: 400 })
+      // User already exists in auth.users — find them and update their profile/role
+      userId = await findUserByEmail(email)
+      if (!userId) {
+        return NextResponse.json({ error: invError.message }, { status: 400 })
+      }
+      // Update the user's metadata so the name is current
+      await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: { full_name: fullName },
+      })
     }
 
-    const userId = invData?.user?.id
     if (!userId) return NextResponse.json({ error: 'No user id from invite' }, { status: 500 })
 
-    // Set role in profiles
+    // Upsert profile with the requested role
     await fetch(`${SB_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
