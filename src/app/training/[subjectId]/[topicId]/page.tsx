@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, use, useRef } from 'react'
+import { useEffect, useState, use, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
   CheckCircle2, ArrowLeft, ArrowRight, Check, BookOpen,
-  Menu, X, FileText, Video, File, Download, Sparkles, ChevronDown
+  Menu, X, FileText, Video, File, Download, Sparkles, ChevronDown,
+  StickyNote, Save
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -83,10 +84,48 @@ export default function TopicPage({ params }: PageParams) {
   // Quiz modal
   const [showQuiz, setShowQuiz] = useState(false)
 
+  // Notes
+  const [noteText,     setNoteText]     = useState('')
+  const [noteSaved,    setNoteSaved]    = useState(true)
+  const [noteSaving,   setNoteSaving]   = useState(false)
+  const [noteOpen,     setNoteOpen]     = useState(false)
+  const noteSaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // SOP expand state: set of attachment indices that are expanded
   const [expandedSops, setExpandedSops] = useState<Set<string>>(new Set())
   function toggleSop(key: string) {
     setExpandedSops(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+  }
+
+  const loadNote = useCallback(async (stepId: string, uid: string) => {
+    const { data } = await supabase
+      .from('step_notes')
+      .select('content')
+      .eq('user_id', uid)
+      .eq('step_id', stepId)
+      .maybeSingle()
+    setNoteText(data?.content ?? '')
+    setNoteSaved(true)
+  }, [supabase])
+
+  async function saveNote(stepId: string, uid: string, text: string) {
+    setNoteSaving(true)
+    await supabase.from('step_notes').upsert(
+      { user_id: uid, step_id: stepId, content: text, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,step_id' }
+    )
+    setNoteSaving(false)
+    setNoteSaved(true)
+  }
+
+  function handleNoteChange(text: string) {
+    setNoteText(text)
+    setNoteSaved(false)
+    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current)
+    noteSaveTimer.current = setTimeout(() => {
+      const step = steps[currentStepIdx]
+      if (step && userId) saveNote(step.id, userId, text)
+    }, 1200)
   }
 
   // Scroll content area to top whenever the step changes
@@ -94,6 +133,11 @@ export default function TopicPage({ params }: PageParams) {
   useEffect(() => {
     contentScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [currentStepIdx])
+
+  useEffect(() => {
+    const step = steps[currentStepIdx]
+    if (step && userId) loadNote(step.id, userId)
+  }, [currentStepIdx, steps, userId, loadNote])
 
   useEffect(() => { loadData() }, [topicId])
 
@@ -467,6 +511,46 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
+                {/* Notes panel */}
+                <div className="mb-6 border border-amber-100 rounded-2xl overflow-hidden">
+                  <button
+                    onClick={() => setNoteOpen(o => !o)}
+                    className="flex items-center justify-between w-full px-4 py-3 bg-amber-50/60 hover:bg-amber-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                      <StickyNote className="w-4 h-4 text-amber-500" />
+                      My Notes
+                      {noteText && <span className="text-[10px] font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">saved</span>}
+                    </div>
+                    <ChevronDown className={cn('w-4 h-4 text-amber-400 transition-transform', noteOpen && 'rotate-180')} />
+                  </button>
+                  {noteOpen && (
+                    <div className="bg-white px-4 py-3 border-t border-amber-100">
+                      <textarea
+                        value={noteText}
+                        onChange={e => handleNoteChange(e.target.value)}
+                        placeholder="Jot down anything useful for this step…"
+                        rows={5}
+                        className="w-full text-sm text-slate-700 placeholder:text-slate-300 bg-transparent resize-none focus:outline-none leading-relaxed"
+                      />
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-50">
+                        {noteSaving && <span className="text-[11px] text-slate-400">Saving…</span>}
+                        {!noteSaving && !noteSaved && (
+                          <button
+                            onClick={() => { const step = steps[currentStepIdx]; if (step && userId) saveNote(step.id, userId, noteText) }}
+                            className="flex items-center gap-1 text-[11px] font-medium text-violet-600 hover:text-violet-800 transition-colors"
+                          >
+                            <Save className="w-3 h-3" /> Save now
+                          </button>
+                        )}
+                        {!noteSaving && noteSaved && noteText && (
+                          <span className="text-[11px] text-emerald-500">Notes saved</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Navigation */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                   <Button
@@ -492,9 +576,24 @@ export default function TopicPage({ params }: PageParams) {
                     ) : (
                       /* Last step */
                       allDone ? (
-                        <Button size="sm" variant="success" onClick={() => setShowQuiz(true)}>
-                          <Sparkles className="w-3.5 h-3.5" /> Knowledge Check
-                        </Button>
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => setShowQuiz(true)}>
+                            <Sparkles className="w-3.5 h-3.5" /> Quiz
+                          </Button>
+                          {nextTopicHref ? (
+                            <Link href={nextTopicHref}>
+                              <Button size="sm">
+                                Next Unit <ArrowRight className="w-3.5 h-3.5" />
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Link href={`/training/${subjectId}`}>
+                              <Button size="sm" variant="success">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Module done
+                              </Button>
+                            </Link>
+                          )}
+                        </>
                       ) : (
                         <Button size="sm" onClick={markAndNext} loading={marking}>
                           <CheckCircle2 className="w-3.5 h-3.5" /> Finish &amp; Quiz
