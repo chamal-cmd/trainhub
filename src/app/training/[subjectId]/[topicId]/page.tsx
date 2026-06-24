@@ -247,6 +247,8 @@ export default function TopicPage({ params }: PageParams) {
   const completedCount = steps.filter(s => completedIds.has(s.id)).length
   const percent        = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0
   const allDone        = steps.length > 0 && completedCount === steps.length
+  const stepAtts: any[] = (currentStep?.content as any)?.attachments ?? []
+  const hasEmbeddableVideo = stepAtts.some(att => att.type === 'video_url' && resolveEmbedUrl(att.url))
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -351,9 +353,10 @@ export default function TopicPage({ params }: PageParams) {
           {/* Content */}
           {currentStep ? (
             <div ref={contentScrollRef} className="flex-1 overflow-y-auto">
-              <div className="max-w-2xl mx-auto px-8 py-10">
-                {/* Step header */}
-                <div className="mb-8">
+              <div className="px-8 py-10">
+
+                {/* Step header — always narrow */}
+                <div className="max-w-2xl mx-auto mb-8">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
                       Step {currentStepIdx + 1}
@@ -371,20 +374,71 @@ export default function TopicPage({ params }: PageParams) {
                 {(() => {
                   const atts: any[] = (currentStep.content as any)?.attachments ?? []
                   if (atts.length === 0) return null
+
+                  const videoAtts  = atts.filter(a => a.type === 'video_url' && resolveEmbedUrl(a.url))
+                  const otherAtts  = atts.filter(a => !(a.type === 'video_url' && resolveEmbedUrl(a.url)))
+
+                  const notesInline = (
+                    <div className="flex flex-col h-full border border-amber-100 rounded-xl overflow-hidden bg-amber-50/30">
+                      <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100 bg-amber-50/60 shrink-0">
+                        <StickyNote className="w-4 h-4 text-amber-500" />
+                        <span className="text-sm font-semibold text-amber-800">My Notes</span>
+                        {noteSaving && <span className="text-[10px] text-slate-400 ml-auto">Saving…</span>}
+                        {!noteSaving && noteSaved && noteText && <span className="text-[10px] text-emerald-500 ml-auto">Saved</span>}
+                        {!noteSaving && !noteSaved && (
+                          <button
+                            onClick={() => { const step = steps[currentStepIdx]; if (step && userId) saveNote(step.id, userId, noteText) }}
+                            className="ml-auto flex items-center gap-1 text-[10px] font-medium text-violet-600 hover:text-violet-800 transition-colors"
+                          >
+                            <Save className="w-3 h-3" /> Save
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        value={noteText}
+                        onChange={e => handleNoteChange(e.target.value)}
+                        placeholder="Jot down anything useful for this step…"
+                        className="flex-1 w-full px-4 py-3 text-sm text-slate-700 placeholder:text-slate-300 bg-transparent resize-none focus:outline-none leading-relaxed"
+                      />
+                    </div>
+                  )
+
                   return (
-                    <div className="mb-6 space-y-3">
-                      {atts.map((att: any, idx: number) => {
-                        const isVideo      = att.type === 'video_url'
-                        const isPdf        = att.type === 'pdf'
-                        const isSop        = att.type === 'sop' || att.type === 'docx'
-                        const embedUrl     = isVideo ? resolveEmbedUrl(att.url) : null
-                        const isEmbeddable = embedUrl !== null
-                        const sopKey       = `${currentStep.id}-${idx}`
-                        const sopExpanded  = expandedSops.has(sopKey)
+                    <div className={cn('mb-6 space-y-3', videoAtts.length > 0 ? 'max-w-5xl mx-auto' : 'max-w-2xl mx-auto')}>
+                      {/* Videos + Notes side by side */}
+                      {videoAtts.length > 0 && (
+                        <div className="flex gap-4 items-stretch">
+                          <div className="flex-[3] min-w-0 space-y-3">
+                            {videoAtts.map((att: any, idx: number) => {
+                              const embedUrl = resolveEmbedUrl(att.url)!
+                              return (
+                                <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100">
+                                    <Video className="w-4 h-4 text-purple-500" />
+                                    <span className="text-sm font-medium text-slate-700 truncate">{att.name || 'Video'}</span>
+                                  </div>
+                                  <div className="aspect-video">
+                                    <iframe src={embedUrl} className="w-full h-full" allowFullScreen allow="encrypted-media" />
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <div className="flex-[2] min-w-0 min-h-[200px]">
+                            {notesInline}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SOPs, PDFs, and other attachments */}
+                      {otherAtts.map((att: any, idx: number) => {
+                        const isPdf = att.type === 'pdf'
+                        const isSop = att.type === 'sop' || att.type === 'docx'
+                        const sopKey = `${currentStep.id}-other-${idx}`
+                        const sopExpanded = expandedSops.has(sopKey)
 
                         if (isSop) return (
                           <div key={idx} className="border border-amber-200 bg-amber-50/30 rounded-xl overflow-hidden">
-                            {/* SOP header row */}
                             <div className="flex items-center justify-between px-4 py-3">
                               <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
@@ -396,25 +450,17 @@ export default function TopicPage({ params }: PageParams) {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <a
-                                  href={att.url}
-                                  download
-                                  className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors"
-                                >
+                                <a href={att.url} download className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors">
                                   <Download className="w-3 h-3" /> Download
                                 </a>
                                 {att.content && (
-                                  <button
-                                    onClick={() => toggleSop(sopKey)}
-                                    className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors"
-                                  >
+                                  <button onClick={() => toggleSop(sopKey)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors">
                                     <ChevronDown className={cn('w-3 h-3 transition-transform', sopExpanded && 'rotate-180')} />
                                     {sopExpanded ? 'Collapse' : 'View SOP'}
                                   </button>
                                 )}
                               </div>
                             </div>
-                            {/* Expandable SOP content */}
                             {sopExpanded && att.content && (
                               <div className="border-t border-amber-200 bg-white px-6 py-5">
                                 <RichTextEditor content={att.content} readOnly />
@@ -423,54 +469,42 @@ export default function TopicPage({ params }: PageParams) {
                           </div>
                         )
 
+                        if (isPdf) return (
+                          <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                                  <FileText className="w-4 h-4 text-red-500" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-700">{att.name}</p>
+                                  <p className="text-xs text-slate-400">PDF Document</p>
+                                </div>
+                              </div>
+                              <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                                <Download className="w-3 h-3" /> Open PDF
+                              </a>
+                            </div>
+                            <iframe src={att.url + '#toolbar=0'} className="w-full h-96 border-t border-slate-100" />
+                          </div>
+                        )
+
                         return (
                           <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-                            {isEmbeddable && embedUrl ? (
-                              <div>
-                                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100">
-                                  <Video className="w-4 h-4 text-purple-500" />
-                                  <span className="text-sm font-medium text-slate-700 truncate">{att.name || 'Video'}</span>
+                            <div className="flex items-center justify-between px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                  <File className="w-4 h-4 text-blue-500" />
                                 </div>
-                                <div className="aspect-video">
-                                  <iframe src={embedUrl} className="w-full h-full" allowFullScreen allow="encrypted-media" />
+                                <div>
+                                  <p className="text-sm font-medium text-slate-700">{att.name}</p>
+                                  <p className="text-xs text-slate-400">Attachment</p>
                                 </div>
                               </div>
-                            ) : isPdf ? (
-                              <div>
-                                <div className="flex items-center justify-between px-4 py-3">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                                      <FileText className="w-4 h-4 text-red-500" />
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium text-slate-700">{att.name}</p>
-                                      <p className="text-xs text-slate-400">PDF Document</p>
-                                    </div>
-                                  </div>
-                                  <a href={att.url} target="_blank" rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                                    <Download className="w-3 h-3" /> Open PDF
-                                  </a>
-                                </div>
-                                <iframe src={att.url + '#toolbar=0'} className="w-full h-96 border-t border-slate-100" />
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                    <File className="w-4 h-4 text-blue-500" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-700">{att.name}</p>
-                                    <p className="text-xs text-slate-400">Attachment</p>
-                                  </div>
-                                </div>
-                                <a href={att.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                                  <Download className="w-3 h-3" /> Download
-                                </a>
-                              </div>
-                            )}
+                              <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                                <Download className="w-3 h-3" /> Download
+                              </a>
+                            </div>
                           </div>
                         )
                       })}
@@ -478,130 +512,130 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
-                {/* Text content */}
-                {currentStep.content && (() => {
-                  const nodes = (currentStep.content as any)?.content
-                  if (!Array.isArray(nodes) || nodes.length === 0) return null
-                  const ytUrls = extractYouTubeUrls(currentStep.content)
-                  return (
-                    <div className={cn(
-                      'rounded-2xl border p-6 mb-6 transition-all',
-                      isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
-                    )}>
-                      <RichTextEditor key={currentStep.id} content={currentStep.content} readOnly />
-                      {ytUrls.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {ytUrls.map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg px-3 py-1.5 transition-colors"
-                            >
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                              </svg>
-                              Watch on YouTube
-                            </a>
-                          ))}
+                {/* Narrow section: text content + notes (non-video) + navigation */}
+                <div className="max-w-2xl mx-auto">
+                  {/* Text content */}
+                  {currentStep.content && (() => {
+                    const nodes = (currentStep.content as any)?.content
+                    if (!Array.isArray(nodes) || nodes.length === 0) return null
+                    const ytUrls = extractYouTubeUrls(currentStep.content)
+                    return (
+                      <div className={cn(
+                        'rounded-2xl border p-6 mb-6 transition-all',
+                        isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
+                      )}>
+                        <RichTextEditor key={currentStep.id} content={currentStep.content} readOnly />
+                        {ytUrls.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {ytUrls.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg px-3 py-1.5 transition-colors">
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                </svg>
+                                Watch on YouTube
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  {/* Notes panel — only for steps without embedded video */}
+                  {!hasEmbeddableVideo && (
+                    <div className="mb-6 border border-amber-100 rounded-2xl overflow-hidden">
+                      <button
+                        onClick={() => setNoteOpen(o => !o)}
+                        className="flex items-center justify-between w-full px-4 py-3 bg-amber-50/60 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                          <StickyNote className="w-4 h-4 text-amber-500" />
+                          My Notes
+                          {noteText && <span className="text-[10px] font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">saved</span>}
+                        </div>
+                        <ChevronDown className={cn('w-4 h-4 text-amber-400 transition-transform', noteOpen && 'rotate-180')} />
+                      </button>
+                      {noteOpen && (
+                        <div className="bg-white px-4 py-3 border-t border-amber-100">
+                          <textarea
+                            value={noteText}
+                            onChange={e => handleNoteChange(e.target.value)}
+                            placeholder="Jot down anything useful for this step…"
+                            rows={5}
+                            className="w-full text-sm text-slate-700 placeholder:text-slate-300 bg-transparent resize-none focus:outline-none leading-relaxed"
+                          />
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-50">
+                            {noteSaving && <span className="text-[11px] text-slate-400">Saving…</span>}
+                            {!noteSaving && !noteSaved && (
+                              <button
+                                onClick={() => { const step = steps[currentStepIdx]; if (step && userId) saveNote(step.id, userId, noteText) }}
+                                className="flex items-center gap-1 text-[11px] font-medium text-violet-600 hover:text-violet-800 transition-colors"
+                              >
+                                <Save className="w-3 h-3" /> Save now
+                              </button>
+                            )}
+                            {!noteSaving && noteSaved && noteText && (
+                              <span className="text-[11px] text-emerald-500">Notes saved</span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
-                  )
-                })()}
-
-                {/* Notes panel */}
-                <div className="mb-6 border border-amber-100 rounded-2xl overflow-hidden">
-                  <button
-                    onClick={() => setNoteOpen(o => !o)}
-                    className="flex items-center justify-between w-full px-4 py-3 bg-amber-50/60 hover:bg-amber-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
-                      <StickyNote className="w-4 h-4 text-amber-500" />
-                      My Notes
-                      {noteText && <span className="text-[10px] font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">saved</span>}
-                    </div>
-                    <ChevronDown className={cn('w-4 h-4 text-amber-400 transition-transform', noteOpen && 'rotate-180')} />
-                  </button>
-                  {noteOpen && (
-                    <div className="bg-white px-4 py-3 border-t border-amber-100">
-                      <textarea
-                        value={noteText}
-                        onChange={e => handleNoteChange(e.target.value)}
-                        placeholder="Jot down anything useful for this step…"
-                        rows={5}
-                        className="w-full text-sm text-slate-700 placeholder:text-slate-300 bg-transparent resize-none focus:outline-none leading-relaxed"
-                      />
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-50">
-                        {noteSaving && <span className="text-[11px] text-slate-400">Saving…</span>}
-                        {!noteSaving && !noteSaved && (
-                          <button
-                            onClick={() => { const step = steps[currentStepIdx]; if (step && userId) saveNote(step.id, userId, noteText) }}
-                            className="flex items-center gap-1 text-[11px] font-medium text-violet-600 hover:text-violet-800 transition-colors"
-                          >
-                            <Save className="w-3 h-3" /> Save now
-                          </button>
-                        )}
-                        {!noteSaving && noteSaved && noteText && (
-                          <span className="text-[11px] text-emerald-500">Notes saved</span>
-                        )}
-                      </div>
-                    </div>
                   )}
-                </div>
 
-                {/* Navigation */}
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentStepIdx(Math.max(0, currentStepIdx - 1))}
-                    disabled={currentStepIdx === 0}
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Previous
-                  </Button>
+                  {/* Navigation */}
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentStepIdx(Math.max(0, currentStepIdx - 1))}
+                      disabled={currentStepIdx === 0}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                    </Button>
 
-                  <div className="flex items-center gap-2">
-                    {!isCurrentDone && (
-                      <Button variant="outline" size="sm" onClick={markCompleteOnly} loading={marking}>
-                        <Check className="w-3.5 h-3.5" /> Mark done
-                      </Button>
-                    )}
-
-                    {currentStepIdx < steps.length - 1 ? (
-                      <Button size="sm" onClick={markAndNext} loading={marking}>
-                        Next <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    ) : (
-                      /* Last step */
-                      allDone ? (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => setShowQuiz(true)}>
-                            <Sparkles className="w-3.5 h-3.5" /> Quiz
-                          </Button>
-                          {nextTopicHref ? (
-                            <Link href={nextTopicHref}>
-                              <Button size="sm">
-                                Next Unit <ArrowRight className="w-3.5 h-3.5" />
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link href={`/training/${subjectId}`}>
-                              <Button size="sm" variant="success">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Module done
-                              </Button>
-                            </Link>
-                          )}
-                        </>
-                      ) : (
-                        <Button size="sm" onClick={markAndNext} loading={marking}>
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Finish &amp; Quiz
+                    <div className="flex items-center gap-2">
+                      {!isCurrentDone && (
+                        <Button variant="outline" size="sm" onClick={markCompleteOnly} loading={marking}>
+                          <Check className="w-3.5 h-3.5" /> Mark done
                         </Button>
-                      )
-                    )}
+                      )}
+
+                      {currentStepIdx < steps.length - 1 ? (
+                        <Button size="sm" onClick={markAndNext} loading={marking}>
+                          Next <ArrowRight className="w-3.5 h-3.5" />
+                        </Button>
+                      ) : (
+                        allDone ? (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => setShowQuiz(true)}>
+                              <Sparkles className="w-3.5 h-3.5" /> Quiz
+                            </Button>
+                            {nextTopicHref ? (
+                              <Link href={nextTopicHref}>
+                                <Button size="sm">
+                                  Next Unit <ArrowRight className="w-3.5 h-3.5" />
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Link href={`/training/${subjectId}`}>
+                                <Button size="sm" variant="success">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Module done
+                                </Button>
+                              </Link>
+                            )}
+                          </>
+                        ) : (
+                          <Button size="sm" onClick={markAndNext} loading={marking}>
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Finish &amp; Quiz
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
+
               </div>
             </div>
           ) : (
