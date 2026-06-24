@@ -310,7 +310,7 @@ export default function TopicPage({ params }: PageParams) {
                       {atts.map((att: any, idx: number) => {
                         const isVideo      = att.type === 'video_url'
                         const isPdf        = att.type === 'pdf'
-                        const isSop        = att.type === 'sop'
+                        const isSop        = att.type === 'sop' || att.type === 'docx'
                         const embedUrl     = isVideo ? resolveEmbedUrl(att.url) : null
                         const isEmbeddable = embedUrl !== null
                         const sopKey       = `${currentStep.id}-${idx}`
