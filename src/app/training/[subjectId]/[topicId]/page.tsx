@@ -68,7 +68,7 @@ export default function TopicPage({ params }: PageParams) {
   const [marking,        setMarking]        = useState(false)
   const [loading,        setLoading]        = useState(true)
   const [userId,         setUserId]         = useState('')
-  const [sidebarOpen,    setSidebarOpen]    = useState(false)
+  const [sidebarOpen,    setSidebarOpen]    = useState(true)
 
   // Next-topic info (for post-quiz navigation)
   const [nextTopicHref, setNextTopicHref]   = useState<string | undefined>(undefined)

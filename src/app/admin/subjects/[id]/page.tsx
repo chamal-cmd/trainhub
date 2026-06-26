@@ -351,19 +351,22 @@ function SubjectEditorInner() {
             : t
         )
       )
-      // Track pending save
-      pendingSaveRef.current = { stepId: selectedStep.step.id, content }
-      // Debounced save
+      // Track pending save — keyed to the step being edited
+      const stepId = selectedStep.step.id
+      pendingSaveRef.current = { stepId, content }
+      // Only cancel the timer if it was for THIS step; otherwise let the old step save
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(async () => {
-        await supabase
+        const { error } = await supabase
           .from('steps')
           .update({ content })
-          .eq('id', selectedStep.step.id)
+          .eq('id', stepId)
         pendingSaveRef.current = null
-        setSavedIndicator(true)
-        setTimeout(() => setSavedIndicator(false), 2000)
-      }, 1000)
+        if (!error) {
+          setSavedIndicator(true)
+          setTimeout(() => setSavedIndicator(false), 2000)
+        }
+      }, 800)
     },
     [selectedStep, supabase]
   )
@@ -371,13 +374,13 @@ function SubjectEditorInner() {
   async function flushPendingSave() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     if (pendingSaveRef.current) {
-      await supabase
-        .from('steps')
-        .update({ content: pendingSaveRef.current.content })
-        .eq('id', pendingSaveRef.current.stepId)
+      const { stepId, content } = pendingSaveRef.current
       pendingSaveRef.current = null
-      setSavedIndicator(true)
-      setTimeout(() => setSavedIndicator(false), 2000)
+      const { error } = await supabase.from('steps').update({ content }).eq('id', stepId)
+      if (!error) {
+        setSavedIndicator(true)
+        setTimeout(() => setSavedIndicator(false), 2000)
+      }
     }
   }
 
@@ -556,6 +559,7 @@ function SubjectEditorInner() {
                           key={step.id}
                           onClick={() => {
                             if (!isRenamingThisStep) {
+                              flushPendingSave()
                               setSelectedStep({ step, topicId: topic.id })
                             }
                           }}
