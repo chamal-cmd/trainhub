@@ -332,6 +332,8 @@ function SubjectEditorInner() {
 
   // ── Content auto-save ────────────────────────────────────────────────────────
 
+  const pendingSaveRef = useRef<{ stepId: string; content: object } | null>(null)
+
   const handleContentChange = useCallback(
     (content: object) => {
       if (!selectedStep) return
@@ -349,6 +351,8 @@ function SubjectEditorInner() {
             : t
         )
       )
+      // Track pending save
+      pendingSaveRef.current = { stepId: selectedStep.step.id, content }
       // Debounced save
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(async () => {
@@ -356,12 +360,26 @@ function SubjectEditorInner() {
           .from('steps')
           .update({ content })
           .eq('id', selectedStep.step.id)
+        pendingSaveRef.current = null
         setSavedIndicator(true)
         setTimeout(() => setSavedIndicator(false), 2000)
       }, 1000)
     },
     [selectedStep, supabase]
   )
+
+  async function flushPendingSave() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (pendingSaveRef.current) {
+      await supabase
+        .from('steps')
+        .update({ content: pendingSaveRef.current.content })
+        .eq('id', pendingSaveRef.current.stepId)
+      pendingSaveRef.current = null
+      setSavedIndicator(true)
+      setTimeout(() => setSavedIndicator(false), 2000)
+    }
+  }
 
   // ── Delete module ────────────────────────────────────────────────────────────
 
@@ -668,12 +686,19 @@ function SubjectEditorInner() {
 
         {/* ── Bottom actions ──────────────────────────────────────────────── */}
         <div className="px-4 py-3 border-t border-slate-100 space-y-2 shrink-0">
-          <Link href={`/training/${subjectId}`} target="_blank">
-            <button className="w-full flex items-center justify-center gap-2 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors">
-              <Eye className="w-3.5 h-3.5" />
-              Preview as Learner
-            </button>
-          </Link>
+          <button
+            onClick={async () => {
+              await flushPendingSave()
+              const href = selectedStep
+                ? `/training/${subjectId}/${selectedStep.topicId}?step=${selectedStep.step.id}`
+                : `/training/${subjectId}`
+              window.open(href, '_blank')
+            }}
+            className="w-full flex items-center justify-center gap-2 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            {selectedStep ? 'Preview this step' : 'Preview as Learner'}
+          </button>
           <button
             onClick={() => setShowAccessModal(true)}
             className="w-full flex items-center justify-center gap-2 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors"

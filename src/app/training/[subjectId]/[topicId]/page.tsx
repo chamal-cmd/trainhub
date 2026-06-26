@@ -78,6 +78,40 @@ export default function TopicPage({ params }: PageParams) {
 
   useEffect(() => { loadData() }, [topicId])
 
+  // Live sync: when admin edits any step or topic title, update immediately
+  useEffect(() => {
+    if (loading) return
+
+    const channel = supabase
+      .channel(`topic-${topicId}-live`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'steps',
+      }, (payload) => {
+        const updated = payload.new as any
+        setSteps(prev => {
+          const idx = prev.findIndex(s => s.id === updated.id)
+          if (idx < 0) return prev
+          const next = [...prev]
+          next[idx] = { ...next[idx], ...updated }
+          return next
+        })
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'topics',
+        filter: `id=eq.${topicId}`,
+      }, (payload) => {
+        const updated = payload.new as any
+        if (updated.title) setTopicTitle(updated.title)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [loading, topicId])
+
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -354,14 +388,16 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
-                {/* Text content */}
+                {/* Text content — recursively check for any text so bullet/numbered lists render */}
                 {currentStep.content && Object.keys(currentStep.content).length > 0 && (
                   (() => {
-                    const paragraphs = (currentStep.content as any)?.content ?? []
-                    const hasText = paragraphs.some((node: any) =>
-                      node?.content?.some((c: any) => c?.text?.trim())
-                    )
-                    if (!hasText) return null
+                    function nodeHasText(node: any): boolean {
+                      if (typeof node?.text === 'string' && node.text.trim()) return true
+                      if (Array.isArray(node?.content)) return node.content.some(nodeHasText)
+                      return false
+                    }
+                    const paragraphs: any[] = (currentStep.content as any)?.content ?? []
+                    if (!paragraphs.some(nodeHasText)) return null
                     return (
                       <div className={cn(
                         'rounded-2xl border p-6 mb-6 transition-all',
