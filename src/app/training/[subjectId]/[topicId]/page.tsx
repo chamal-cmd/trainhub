@@ -78,6 +78,18 @@ export default function TopicPage({ params }: PageParams) {
 
   useEffect(() => { loadData() }, [topicId])
 
+  // Refresh current step content from DB whenever the user switches steps
+  // so edits the admin makes are always visible without a full page reload
+  useEffect(() => {
+    if (loading || steps.length === 0) return
+    const step = steps[currentStepIdx]
+    if (!step) return
+    supabase.from('steps').select('id, title, content').eq('id', step.id).single()
+      .then(({ data }) => {
+        if (data) setSteps(prev => prev.map((s, i) => i === currentStepIdx ? { ...s, ...data } : s))
+      })
+  }, [currentStepIdx])
+
   // Live sync: when admin edits any step or topic title, update immediately
   useEffect(() => {
     if (loading) return
@@ -180,10 +192,11 @@ export default function TopicPage({ params }: PageParams) {
   // ── Mark done + advance ──────────────────────────────────────────────────
   async function markAndNext() {
     const newCompleted = await markComplete()
+    const isLastStep   = currentStepIdx === steps.length - 1
     const allNowDone   = steps.length > 0 && steps.every(s => newCompleted.has(s.id))
 
-    if (allNowDone) {
-      // Topic complete — launch AI quiz
+    if (isLastStep && allNowDone) {
+      // Only launch quiz when the user actually finishes the final step
       setShowQuiz(true)
     } else if (currentStepIdx < steps.length - 1) {
       setCurrentStepIdx(currentStepIdx + 1)
@@ -193,8 +206,9 @@ export default function TopicPage({ params }: PageParams) {
   // ── "Mark done" only button (last step already complete but quiz not taken)
   async function markCompleteOnly() {
     const newCompleted = await markComplete()
+    const isLastStep   = currentStepIdx === steps.length - 1
     const allNowDone   = steps.length > 0 && steps.every(s => newCompleted.has(s.id))
-    if (allNowDone) setShowQuiz(true)
+    if (isLastStep && allNowDone) setShowQuiz(true)
   }
 
   const currentStep    = steps[currentStepIdx]
