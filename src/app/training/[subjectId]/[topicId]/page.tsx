@@ -417,7 +417,7 @@ export default function TopicPage({ params }: PageParams) {
                         'rounded-2xl border p-6 mb-6 transition-all',
                         isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
                       )}>
-                        <RichTextEditor content={currentStep.content} readOnly />
+                        <RichTextEditor key={currentStep.id} content={currentStep.content} readOnly />
                       </div>
                     )
                   })()
