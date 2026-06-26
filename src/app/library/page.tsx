@@ -12,11 +12,11 @@ export default async function LibraryPage() {
 
   const supabase = await createClient()
 
-  const [assignmentsRes, progressRes, quizAttemptsRes] = await Promise.all([
+  const [subjectsRes, progressRes, quizAttemptsRes] = await Promise.all([
     supabase
-      .from('assignments')
-      .select('id, due_date, subjects(id, title, description, emoji, cover_color, order_index, topics(id, steps(id)), quizzes(id))')
-      .eq('user_id', user.id),
+      .from('subjects')
+      .select('id, title, description, emoji, cover_color, order_index, topics(id, steps(id)), quizzes(id)')
+      .order('order_index'),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
     supabase.from('quiz_attempts').select('quiz_id').eq('user_id', user.id).eq('passed', true),
   ])
@@ -24,24 +24,21 @@ export default async function LibraryPage() {
   const completedStepIds = new Set((progressRes.data ?? []).map(p => p.step_id))
   const passedQuizIds    = new Set((quizAttemptsRes.data ?? []).map(a => a.quiz_id))
 
-  // Build module list sorted by order_index
-  const modules = (assignmentsRes.data ?? [])
-    .map(a => {
-      const subject   = a.subjects as any
-      const allSteps: string[] = subject?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
-      const completed  = allSteps.filter(id => completedStepIds.has(id)).length
-      const total      = allSteps.length
-      const percent    = total > 0 ? Math.round((completed / total) * 100) : 0
-      const quiz       = (subject?.quizzes as any[])?.[0] ?? null
-      const quizPassed = !quiz || passedQuizIds.has(quiz.id)
+  // Build module list from all subjects, sorted by order_index
+  const modules = (subjectsRes.data ?? [])
+    .map(subject => {
+      const allSteps: string[] = (subject.topics as any[])?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
+      const completed   = allSteps.filter(id => completedStepIds.has(id)).length
+      const total       = allSteps.length
+      const percent     = total > 0 ? Math.round((completed / total) * 100) : 0
+      const quiz        = (subject.quizzes as any[])?.[0] ?? null
+      const quizPassed  = !quiz || passedQuizIds.has(quiz.id)
       const stepsAllDone = total > 0 && completed === total
-      const fullyDone  = stepsAllDone && quizPassed
+      const fullyDone   = stepsAllDone && quizPassed
       const quizPending = stepsAllDone && quiz && !quizPassed
-      const readMins   = Math.max(2, total * 3)
-      const dueDate    = a.due_date ? new Date(a.due_date) : null
-      return { subject, allSteps, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, dueDate, locked: false }
+      const readMins    = Math.max(2, total * 3)
+      return { subject, allSteps, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, dueDate: null as Date | null, locked: false }
     })
-    .sort((a, b) => (a.subject?.order_index ?? 999) - (b.subject?.order_index ?? 999))
 
   // Mark locked: a module is locked if any earlier module is not fully done
   for (let i = 1; i < modules.length; i++) {
@@ -83,8 +80,8 @@ export default async function LibraryPage() {
           <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
             <Lock className="w-6 h-6 text-slate-300" />
           </div>
-          <p className="text-sm font-semibold text-slate-500">No modules assigned yet</p>
-          <p className="text-xs text-slate-400 mt-1">Your administrator will assign modules to you soon.</p>
+          <p className="text-sm font-semibold text-slate-500">No modules yet</p>
+          <p className="text-xs text-slate-400 mt-1">Your administrator hasn't created any modules yet.</p>
         </div>
       ) : (
         <div className="max-w-2xl space-y-2">

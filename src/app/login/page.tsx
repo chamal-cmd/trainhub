@@ -42,6 +42,7 @@ function LoginPageInner() {
     if (!raw) return ''
     if (raw === 'access_denied') return 'Google sign-in was cancelled.'
     if (raw === 'auth_failed')   return 'Sign-in failed. Please try again.'
+    if (raw === 'not_invited')   return 'No account found for this email. Ask your administrator for an invite link.'
     return `Sign-in error: ${decodeURIComponent(raw)}.`
   })
   // Clear ?error= from the URL so refreshing doesn't re-show the error

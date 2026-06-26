@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-// Verify the caller is an admin using pure fetch (no supabase-js package)
+function adminClient() {
+  return createSupabaseClient(SB_URL, SVC, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
 async function verifyAdmin(token: string): Promise<string | null> {
-  // Get user from JWT
   const r1 = await fetch(`${SB_URL}/auth/v1/user`, {
     headers: { 'apikey': ANON, 'Authorization': `Bearer ${token}` },
   })
@@ -14,7 +19,6 @@ async function verifyAdmin(token: string): Promise<string | null> {
   const user = await r1.json()
   if (!user?.id) return null
 
-  // Check admin role in profiles
   const r2 = await fetch(`${SB_URL}/rest/v1/profiles?select=role&id=eq.${user.id}&limit=1`, {
     headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}` },
   })
@@ -38,54 +42,51 @@ export async function POST(req: NextRequest) {
       ? `https://${req.headers.get('x-forwarded-host')}`
       : new URL(req.url).origin
 
-    // Send invite via Supabase Admin API
-    const invRes = await fetch(`${SB_URL}/auth/v1/admin/invite`, {
-      method: 'POST',
-      headers: {
-        'apikey': SVC,
-        'Authorization': `Bearer ${SVC}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
+    const supabase = adminClient()
+
+    // Generate a PKCE-compatible invite link (no email sent by Supabase)
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: {
         data: { full_name: fullName },
-        redirect_to: `${origin}/auth/callback`,
-      }),
+        redirectTo: `${origin}/auth/accept`,
+      },
     })
-    const invData = await invRes.json()
-    if (!invRes.ok) return NextResponse.json({ error: invData?.msg || invData?.message || 'Invite failed' }, { status: 400 })
 
-    const userId = invData.id
-    if (!userId) return NextResponse.json({ error: 'No user id from invite' }, { status: 500 })
+    if (linkError || !linkData) {
+      return NextResponse.json({ error: linkError?.message ?? 'Failed to generate link' }, { status: 400 })
+    }
 
-    // Set role in profiles
+    const userId: string      = (linkData as any).user?.id
+    const hashedToken: string = (linkData as any)?.properties?.hashed_token
+
+    if (!userId)      return NextResponse.json({ error: 'Could not determine user id' }, { status: 500 })
+    if (!hashedToken) return NextResponse.json({ error: 'Could not generate invite token' }, { status: 500 })
+
+    // Manually build the verify URL so type=invite is always present
+    const inviteUrl = `${SB_URL}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=invite&redirect_to=${encodeURIComponent(`${origin}/auth/accept`)}`
+
+    // Upsert profile so the user is recognised on first sign-in
     await fetch(`${SB_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
         'apikey': SVC,
         'Authorization': `Bearer ${SVC}`,
         'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
       },
       body: JSON.stringify({ id: userId, email, full_name: fullName ?? email.split('@')[0], role }),
     })
 
-    // Notify admin (fire and forget)
-    const resendKey = process.env.RESEND_API_KEY
-    if (resendKey) {
-      fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'TrainHub <onboarding@resend.dev>',
-          to: ['chamal@gpbookkeeper.com.au'],
-          subject: `Invite sent: ${fullName ?? email} (${role === 'admin' ? 'Admin' : 'Team Member'})`,
-          html: `<div style="font-family:sans-serif;padding:24px"><h2>Invite Sent</h2><p><b>${fullName ?? '—'}</b><br/>${email}<br/>Role: ${role}</p></div>`,
-        }),
-      }).catch(() => {})
-    }
+    // Flag so the callback shows the welcome/setup page on first sign-in
+    await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_metadata: { onboarding_pending: true } }),
+    })
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, inviteUrl })
   } catch (e: any) {
     return NextResponse.json({ error: `Exception: ${e?.message ?? String(e)}` }, { status: 500 })
   }

@@ -17,11 +17,11 @@ export default async function UserDashboard() {
 
   const supabase = await createClient()
 
-  const [assignmentsRes, progressRes, profile] = await Promise.all([
+  const [subjectsRes, progressRes, profile] = await Promise.all([
     supabase
-      .from('assignments')
-      .select('id, due_date, subjects(id, title, emoji, cover_color, topics(id, steps(id)))')
-      .eq('user_id', user.id),
+      .from('subjects')
+      .select('id, title, emoji, cover_color, topics(id, steps(id))')
+      .order('order_index'),
     supabase
       .from('step_progress')
       .select('step_id, completed_at')
@@ -30,25 +30,21 @@ export default async function UserDashboard() {
     getProfile(user.id),
   ])
 
-  const assignments  = assignmentsRes.data ?? []
+  const subjects     = subjectsRes.data ?? []
   const stepProgress = progressRes.data ?? []
   const completedIds = new Set(stepProgress.map((p: any) => p.step_id))
   const firstName    = (profile?.full_name ?? '').split(' ')[0] || 'there'
 
-  // Build enriched module list
-  const modules = assignments.map(a => {
-    const subject     = a.subjects as any
-    const allSteps: string[] = subject?.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
+  // Build enriched module list from all subjects
+  const modules = subjects.map(subject => {
+    const allSteps: string[] = (subject.topics as any[])?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
     const completed   = allSteps.filter(id => completedIds.has(id)).length
     const total       = allSteps.length
     const percent     = total > 0 ? Math.round((completed / total) * 100) : 0
     const readMins    = Math.max(2, total * 3)
-    const dueDate     = a.due_date ? new Date(a.due_date) : null
-    const now         = new Date()
-    const overdueDays = dueDate && dueDate < now && percent < 100
-      ? Math.floor((now.getTime() - dueDate.getTime()) / 86400000) : 0
-    const color       = subject?.cover_color || '#7C3AED'
-    return { subject, dueDate, readMins, overdueDays, percent, completed, total, color }
+    const overdueDays = 0
+    const color       = (subject as any).cover_color || '#7C3AED'
+    return { subject, readMins, overdueDays, percent, completed, total, color }
   })
 
   const inProgress  = modules.filter(m => m.percent > 0 && m.percent < 100)
@@ -70,10 +66,9 @@ export default async function UserDashboard() {
 
   // Most recently active module (Jump Back In)
   const stepToSubjectId = new Map<string, string>()
-  for (const a of assignments) {
-    const s = a.subjects as any
-    for (const t of s?.topics ?? [])
-      for (const step of t.steps ?? [])
+  for (const s of subjects) {
+    for (const t of (s.topics as any[]) ?? [])
+      for (const step of (t.steps as any[]) ?? [])
         stepToSubjectId.set(step.id, s.id)
   }
   const modBySubjectId = new Map(modules.map(m => [m.subject.id, m]))
@@ -109,14 +104,14 @@ export default async function UserDashboard() {
                 ? `You have ${allTodo.length} module${allTodo.length !== 1 ? 's' : ''} to work through.${inProgress.length > 0 ? ` ${inProgress.length} in progress.` : ''}`
                 : done.length > 0
                 ? 'All modules complete — amazing work! 🏆'
-                : 'No training assigned yet.'}
+                : 'No modules available yet.'}
             </p>
           </div>
 
           {/* Stats row */}
           {modules.length > 0 && (
             <div className="flex items-center gap-4 shrink-0">
-              <StatPill icon={<BookOpen className="w-3.5 h-3.5" />} value={modules.length} label="Assigned" color="violet" />
+              <StatPill icon={<BookOpen className="w-3.5 h-3.5" />} value={modules.length} label="Modules" color="violet" />
               <StatPill icon={<Zap className="w-3.5 h-3.5" />} value={inProgress.length} label="In progress" color="orange" />
               <StatPill icon={<CheckCircle2 className="w-3.5 h-3.5" />} value={done.length} label="Completed" color="emerald" />
             </div>
@@ -170,8 +165,8 @@ export default async function UserDashboard() {
                 <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mb-4">
                   <BookOpen className="w-7 h-7 text-violet-400" />
                 </div>
-                <p className="font-bold text-slate-700 text-lg">No training assigned yet</p>
-                <p className="text-slate-400 text-sm mt-1.5">Your administrator will assign modules soon.</p>
+                <p className="font-bold text-slate-700 text-lg">No modules yet</p>
+                <p className="text-slate-400 text-sm mt-1.5">Your administrator hasn't created any modules yet.</p>
               </div>
             )}
           </div>
@@ -319,7 +314,7 @@ function JumpBackCard({ m }: { m: any }) {
 
 function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
   const color = isDone ? '#10b981' : (m.color || '#7C3AED')
-  const { subject, dueDate, readMins, overdueDays, percent, completed, total } = m
+  const { subject, readMins, overdueDays, percent, completed, total } = m
 
   return (
     <Link href={`/training/${subject.id}`}>
