@@ -531,12 +531,13 @@ export default function TopicPage({ params }: PageParams) {
                   const videoUrls: string[] = []
                   const textNodes: any[]    = []
                   for (const node of allNodes) {
-                    const rawText = node.type === 'paragraph' && node.content?.length === 1
-                      ? (node.content[0]?.text ?? '').trim()
+                    const fullText = node.type === 'paragraph'
+                      ? ((node.content ?? []) as any[]).map((c: any) => c.text ?? '').join('').trim()
                       : ''
-                    if (rawText && resolveEmbedUrl(rawText)) {
-                      videoUrls.push(rawText)
-                    } else if (rawText && /^frequency:/i.test(rawText)) {
+                    const isSingleText = node.type === 'paragraph' && node.content?.length === 1
+                    if (isSingleText && resolveEmbedUrl(fullText)) {
+                      videoUrls.push(fullText)
+                    } else if (/^frequency:/i.test(fullText)) {
                       // strip "Frequency: X" labels imported from Excel
                     } else {
                       textNodes.push(node)
