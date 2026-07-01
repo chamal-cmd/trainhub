@@ -15,43 +15,9 @@ import {
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import TopicQuizModal from '@/components/shared/TopicQuizModal'
+import { resolveEmbedUrl } from '@/lib/resolveEmbedUrl'
 
 type PageParams = { params: Promise<{ subjectId: string; topicId: string }> }
-
-// ── Converts any shareable video URL into its embeddable iframe src ───────────
-function resolveEmbedUrl(url: string): string | null {
-  try {
-    if (url.includes('youtube.com/watch')) {
-      const v = new URL(url).searchParams.get('v')
-      return v ? `https://www.youtube.com/embed/${v}` : null
-    }
-    if (url.includes('youtu.be/')) {
-      const id = url.split('youtu.be/')[1]?.split('?')[0]
-      return id ? `https://www.youtube.com/embed/${id}` : null
-    }
-    if (url.includes('vimeo.com/')) {
-      const path  = url.split('vimeo.com/')[1]?.split('?')[0] ?? ''
-      const parts = path.split('/')
-      const videoId = parts[0]
-      const hash    = parts[1]
-      if (!videoId) return null
-      return hash
-        ? `https://player.vimeo.com/video/${videoId}?h=${hash}&badge=0&autopause=0&player_id=0`
-        : `https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0`
-    }
-    if (url.includes('loom.com/share/')) {
-      const id = url.split('loom.com/share/')[1]?.split('?')[0]
-      return id ? `https://www.loom.com/embed/${id}?hide_owner=true&hide_share=true` : null
-    }
-    if (url.includes('drive.google.com/file/d/')) {
-      const fileId = url.split('/file/d/')[1]?.split('/')[0]
-      return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : null
-    }
-    return null
-  } catch {
-    return null
-  }
-}
 
 export default function TopicPage({ params }: PageParams) {
   const { subjectId, topicId } = use(params)
@@ -128,6 +94,49 @@ export default function TopicPage({ params }: PageParams) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
+
+    // ── Sequential lock check ─────────────────────────────────────────────────
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const isAdmin = profile?.role === 'admin'
+
+    if (!isAdmin) {
+      const { data: allTopics } = await supabase
+        .from('topics')
+        .select('id, order_index, ai_quiz, steps(id)')
+        .eq('subject_id', subjectId)
+        .order('order_index')
+
+      if (allTopics) {
+        const idx = allTopics.findIndex(t => t.id === topicId)
+        if (idx > 0) {
+          const prev = allTopics[idx - 1] as any
+          const hasQuiz = (prev.ai_quiz?.questions?.length ?? 0) > 0
+
+          if (hasQuiz) {
+            const { data: completion } = await supabase
+              .from('topic_quiz_completions')
+              .select('passed')
+              .eq('user_id', user.id)
+              .eq('topic_id', prev.id)
+              .maybeSingle()
+            if (!completion?.passed) {
+              router.replace(`/training/${subjectId}`)
+              return
+            }
+          } else if ((prev.steps as any[])?.length > 0) {
+            const { data: progress } = await supabase
+              .from('step_progress').select('step_id').eq('user_id', user.id)
+            const doneIds = new Set(progress?.map((p: any) => p.step_id) ?? [])
+            const allDone = (prev.steps as any[]).every((s: any) => doneIds.has(s.id))
+            if (!allDone) {
+              router.replace(`/training/${subjectId}`)
+              return
+            }
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const { data: topic } = await supabase
       .from('topics')
@@ -402,26 +411,61 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
-                {/* Text content — recursively check for any text so bullet/numbered lists render */}
-                {currentStep.content && Object.keys(currentStep.content).length > 0 && (
-                  (() => {
-                    function nodeHasText(node: any): boolean {
-                      if (typeof node?.text === 'string' && node.text.trim()) return true
-                      if (Array.isArray(node?.content)) return node.content.some(nodeHasText)
-                      return false
+                {/* Content: split URL-only paragraphs → video embeds; rest → rich text */}
+                {currentStep.content && (() => {
+                  const allNodes: any[] = (currentStep.content as any)?.content ?? []
+
+                  const videoUrls: string[] = []
+                  const textNodes: any[]    = []
+                  for (const node of allNodes) {
+                    const rawText = node.type === 'paragraph' && node.content?.length === 1
+                      ? (node.content[0]?.text ?? '').trim()
+                      : ''
+                    if (rawText && resolveEmbedUrl(rawText)) {
+                      videoUrls.push(rawText)
+                    } else if (rawText && /^frequency:/i.test(rawText)) {
+                      // strip "Frequency: X" labels imported from Excel
+                    } else {
+                      textNodes.push(node)
                     }
-                    const paragraphs: any[] = (currentStep.content as any)?.content ?? []
-                    if (!paragraphs.some(nodeHasText)) return null
-                    return (
-                      <div className={cn(
-                        'rounded-2xl border p-6 mb-6 transition-all',
-                        isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
-                      )}>
-                        <RichTextEditor key={currentStep.id} content={currentStep.content} readOnly />
-                      </div>
-                    )
-                  })()
-                )}
+                  }
+
+                  const filteredContent = { ...(currentStep.content as any), content: textNodes }
+                  function nodeHasText(n: any): boolean {
+                    if (typeof n?.text === 'string' && n.text.trim()) return true
+                    if (Array.isArray(n?.content)) return n.content.some(nodeHasText)
+                    return false
+                  }
+                  const hasText = textNodes.some(nodeHasText)
+
+                  return (
+                    <>
+                      {videoUrls.map((url, i) => {
+                        const embedUrl = resolveEmbedUrl(url)!
+                        return (
+                          <div key={i} className="rounded-2xl overflow-hidden border border-slate-100 mb-6 bg-black shadow-sm">
+                            <div className="aspect-video">
+                              <iframe
+                                src={embedUrl}
+                                className="w-full h-full"
+                                allowFullScreen
+                                allow="autoplay; encrypted-media"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {hasText && (
+                        <div className={cn(
+                          'rounded-2xl border p-6 mb-6 transition-all',
+                          isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
+                        )}>
+                          <RichTextEditor key={currentStep.id} content={filteredContent} readOnly />
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
 
                 {/* Navigation */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">

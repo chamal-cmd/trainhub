@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { resend, FROM } from '@/lib/resend'
+import { inviteEmail, welcomeEmail } from '@/lib/emails'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -85,6 +87,22 @@ export async function POST(req: NextRequest) {
       headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_metadata: { onboarding_pending: true } }),
     })
+
+    // Send invite email via Resend
+    if (resend) {
+      const callerProfile = await fetch(
+        `${SB_URL}/rest/v1/profiles?select=full_name&id=eq.${callerId}&limit=1`,
+        { headers: { apikey: SVC, Authorization: `Bearer ${SVC}` } }
+      ).then(r => r.json())
+      const invitedByName: string = callerProfile?.[0]?.full_name ?? 'Your admin'
+
+      await resend.emails.send({
+        from: FROM,
+        to: email,
+        subject: `You've been invited to TrainHub`,
+        html: inviteEmail({ fullName: fullName ?? email.split('@')[0], inviteUrl, invitedByName }),
+      })
+    }
 
     return NextResponse.json({ ok: true, inviteUrl })
   } catch (e: any) {

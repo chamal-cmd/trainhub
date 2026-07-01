@@ -6,9 +6,10 @@ import { getUser, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
 import {
   Clock, AlertTriangle, BookOpen, Zap,
-  CheckCircle2, ArrowRight, Trophy, Flame, TrendingUp
+  CheckCircle2, ArrowRight, Trophy, Flame, TrendingUp, Lock,
 } from 'lucide-react'
 import { AiLaunchCard } from '@/components/shared/AiLaunchCard'
+import { NudgeTodoSection } from '@/components/shared/NudgeTodoSection'
 import { cn } from '@/lib/utils'
 
 export default async function UserDashboard() {
@@ -17,23 +18,55 @@ export default async function UserDashboard() {
 
   const supabase = await createClient()
 
-  const [subjectsRes, progressRes, profile] = await Promise.all([
+  const [subjectsRes, progressRes, topicQuizRes, profile, nudgesRes] = await Promise.all([
     supabase
       .from('subjects')
-      .select('id, title, emoji, cover_color, topics(id, steps(id))')
+      .select('id, title, emoji, cover_color, topics(id, ai_quiz, steps(id))')
       .order('order_index'),
     supabase
       .from('step_progress')
       .select('step_id, completed_at')
       .eq('user_id', user.id)
       .order('completed_at', { ascending: false }),
+    supabase
+      .from('topic_quiz_completions')
+      .select('topic_id, passed')
+      .eq('user_id', user.id),
     getProfile(user.id),
+    supabase
+      .from('assignments')
+      .select('id, created_at, subjects(id, title, emoji, cover_color)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
   ])
 
-  const subjects     = subjectsRes.data ?? []
-  const stepProgress = progressRes.data ?? []
-  const completedIds = new Set(stepProgress.map((p: any) => p.step_id))
-  const firstName    = (profile?.full_name ?? '').split(' ')[0] || 'there'
+  const subjects           = subjectsRes.data ?? []
+  const stepProgress       = progressRes.data ?? []
+  const completedIds       = new Set(stepProgress.map((p: any) => p.step_id))
+  const passedTopicQuizIds = new Set((topicQuizRes.data ?? []).filter((r: any) => r.passed).map((r: any) => r.topic_id))
+  const firstName          = (profile?.full_name ?? '').split(' ')[0] || 'there'
+  const nudges             = (nudgesRes.data ?? []).filter((n: any) => n.subjects)
+
+  // A subject is fully complete when all steps are done AND all topic quizzes (if any) are passed
+  function isSubjectComplete(subject: any): boolean {
+    for (const topic of (subject.topics as any[]) ?? []) {
+      const steps = (topic.steps as any[]) ?? []
+      if (steps.length === 0) continue
+      if (!steps.every((s: any) => completedIds.has(s.id))) return false
+      if ((topic.ai_quiz?.questions?.length ?? 0) > 0 && !passedTopicQuizIds.has(topic.id)) return false
+    }
+    return true
+  }
+
+  // A subject is locked if any earlier subject is not complete.
+  // Client training subjects (emoji '📋') are always accessible — skip them in the chain.
+  const lockedSubjectIds = new Set<string>()
+  let prevComplete = true
+  for (const subject of subjects) {
+    if ((subject as any).emoji === '📋' && (subject as any).cover_color === '#6366f1') continue
+    if (!prevComplete) lockedSubjectIds.add(subject.id)
+    prevComplete = isSubjectComplete(subject)
+  }
 
   // Build enriched module list from all subjects
   const modules = subjects.map(subject => {
@@ -77,7 +110,9 @@ export default async function UserDashboard() {
     const subjectId = stepToSubjectId.get(sp.step_id)
     if (subjectId) {
       const mod = modBySubjectId.get(subjectId)
-      if (mod && mod.percent > 0 && mod.percent < 100) { jumpBackMod = mod; break }
+      if (mod && mod.percent > 0 && mod.percent < 100 && !lockedSubjectIds.has(subjectId)) {
+        jumpBackMod = mod; break
+      }
     }
   }
 
@@ -144,7 +179,7 @@ export default async function UserDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {allTodo
                     .filter(m => m.subject.id !== jumpBackMod?.subject.id)
-                    .map(m => <ModuleCard key={m.subject.id} m={m} />)}
+                    .map(m => <ModuleCard key={m.subject.id} m={m} locked={lockedSubjectIds.has(m.subject.id)} />)}
                 </div>
               </section>
             )}
@@ -158,6 +193,9 @@ export default async function UserDashboard() {
                 </div>
               </section>
             )}
+
+            {/* Nudge to-do list */}
+            <NudgeTodoSection initialNudges={nudges as any} />
 
             {/* Empty */}
             {modules.length === 0 && (
@@ -173,9 +211,6 @@ export default async function UserDashboard() {
 
           {/* ── Right: sidebar widgets ── */}
           <div className="w-60 shrink-0 space-y-4">
-
-            {/* AI card */}
-            <AiLaunchCard />
 
             {/* Overall progress ring */}
             {modules.length > 0 && (
@@ -312,73 +347,84 @@ function JumpBackCard({ m }: { m: any }) {
 
 // ── Module Card ───────────────────────────────────────────────────────────────
 
-function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
-  const color = isDone ? '#10b981' : (m.color || '#7C3AED')
+function ModuleCard({ m, isDone = false, locked = false }: { m: any; isDone?: boolean; locked?: boolean }) {
+  const color = locked ? '#94a3b8' : isDone ? '#10b981' : (m.color || '#7C3AED')
   const { subject, readMins, overdueDays, percent, completed, total } = m
 
-  return (
-    <Link href={`/training/${subject.id}`}>
-      <div className={cn(
-        'group bg-white rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg',
-        isDone ? 'border-emerald-100 opacity-80 hover:opacity-100' : 'border-slate-200 hover:border-violet-200',
-      )}>
-        {/* Card header with colour strip */}
-        <div
-          className="px-5 pt-5 pb-4"
-          style={{ borderBottom: `2px solid ${color}20` }}
-        >
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0"
-              style={{ background: `${color}18` }}
-            >
-              {subject.emoji || <BookOpen className="w-5 h-5" />}
-            </div>
-            {overdueDays > 0 ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 rounded-lg px-2 py-1 shrink-0">
-                <AlertTriangle className="w-3 h-3" /> {overdueDays}d overdue
-              </span>
-            ) : isDone ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1 shrink-0">
-                <CheckCircle2 className="w-3 h-3" /> Done
-              </span>
-            ) : percent > 0 ? (
-              <span className="text-[11px] font-bold rounded-lg px-2 py-1 shrink-0" style={{ color, background: `${color}15` }}>
-                {percent}%
-              </span>
-            ) : null}
+  const card = (
+    <div className={cn(
+      'group bg-white rounded-2xl border overflow-hidden transition-all duration-200',
+      locked
+        ? 'border-slate-100 opacity-50 cursor-not-allowed'
+        : isDone
+        ? 'border-emerald-100 opacity-80 hover:opacity-100 hover:shadow-lg'
+        : 'border-slate-200 hover:border-violet-200 hover:shadow-lg',
+    )}>
+      {/* Card header with colour strip */}
+      <div
+        className="px-5 pt-5 pb-4"
+        style={{ borderBottom: `2px solid ${color}20` }}
+      >
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0"
+            style={{ background: `${color}18` }}
+          >
+            {locked ? <Lock className="w-5 h-5 text-slate-400" /> : (subject.emoji || <BookOpen className="w-5 h-5" />)}
           </div>
-          <h3 className={cn(
-            'font-bold text-sm leading-snug',
-            isDone ? 'text-slate-500 line-through' : 'text-slate-800 group-hover:text-slate-900'
-          )}>
-            {subject.title}
-          </h3>
+          {locked ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 rounded-lg px-2 py-1 shrink-0">
+              <Lock className="w-3 h-3" /> Locked
+            </span>
+          ) : overdueDays > 0 ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 rounded-lg px-2 py-1 shrink-0">
+              <AlertTriangle className="w-3 h-3" /> {overdueDays}d overdue
+            </span>
+          ) : isDone ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 rounded-lg px-2 py-1 shrink-0">
+              <CheckCircle2 className="w-3 h-3" /> Done
+            </span>
+          ) : percent > 0 ? (
+            <span className="text-[11px] font-bold rounded-lg px-2 py-1 shrink-0" style={{ color, background: `${color}15` }}>
+              {percent}%
+            </span>
+          ) : null}
         </div>
+        <h3 className={cn(
+          'font-bold text-sm leading-snug',
+          locked ? 'text-slate-400' : isDone ? 'text-slate-500 line-through' : 'text-slate-800 group-hover:text-slate-900'
+        )}>
+          {subject.title}
+        </h3>
+        {locked && (
+          <p className="text-[11px] text-slate-400 mt-1">Complete the previous module to unlock</p>
+        )}
+      </div>
 
-        {/* Progress + meta */}
-        <div className="px-5 py-3.5">
-          {!isDone && (
-            <div className="mb-3">
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${percent}%`, background: color }}
-                />
-              </div>
+      {/* Progress + meta */}
+      <div className="px-5 py-3.5">
+        {!isDone && !locked && (
+          <div className="mb-3">
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${percent}%`, background: color }}
+              />
             </div>
-          )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                <BookOpen className="w-3 h-3" />
-                {total} steps
-              </span>
-              <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                <Clock className="w-3 h-3" />
-                {readMins} min
-              </span>
-            </div>
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-[11px] text-slate-400">
+              <BookOpen className="w-3 h-3" />
+              {total} steps
+            </span>
+            <span className="flex items-center gap-1 text-[11px] text-slate-400">
+              <Clock className="w-3 h-3" />
+              {readMins} min
+            </span>
+          </div>
+          {!locked && (
             <span
               className="text-[11px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"
               style={{ color }}
@@ -386,11 +432,14 @@ function ModuleCard({ m, isDone = false }: { m: any; isDone?: boolean }) {
               {isDone ? 'Review' : percent > 0 ? 'Continue' : 'Start'}
               <ArrowRight className="w-3 h-3" />
             </span>
-          </div>
+          )}
         </div>
       </div>
-    </Link>
+    </div>
   )
+
+  if (locked) return <div>{card}</div>
+  return <Link href={`/training/${subject.id}`}>{card}</Link>
 }
 
 // ── Progress Ring (SVG donut) ─────────────────────────────────────────────────

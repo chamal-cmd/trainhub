@@ -1,6 +1,7 @@
 'use client'
 
 import { UserTopBar } from './UserTopBar'
+import { UserNarrowSidebar } from './UserNarrowSidebar'
 
 interface UserClientWrapperProps {
   children: React.ReactNode
@@ -17,6 +18,7 @@ export function UserClientWrapper({
 }: UserClientWrapperProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-white">
+      <UserNarrowSidebar userName={userName} />
       <div className="flex-1 flex flex-col min-w-0">
         <UserTopBar
           userName={userName}

@@ -47,27 +47,45 @@ export default function TopicQuizModal({
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
 
-  useEffect(() => { generateQuiz() }, [])
+  useEffect(() => { loadQuiz() }, [])
 
-  async function generateQuiz() {
+  async function loadQuiz() {
     setError('')
     setPhase('loading')
     try {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('ai_quiz')
+        .eq('id', topicId)
+        .single()
+
+      if (error) throw error
+
+      if (data?.ai_quiz?.questions?.length) {
+        setQuiz(data.ai_quiz as QuizData)
+        setPhase('quiz')
+        return
+      }
+
+      // No quiz yet — auto-generate it now
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) { setError('Not authenticated'); return }
 
-      const res = await fetch('/api/ai-quiz/generate', {
+      const res = await fetch('/api/quiz/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ topicId }),
       })
-      const data = await res.json()
-      if (!res.ok || !data.quiz) { setError(data.error ?? 'Failed to generate quiz'); return }
-      setQuiz(data.quiz)
+      const json = await res.json()
+      if (!res.ok || !json.quiz) {
+        setError(json.error ?? 'Failed to generate quiz')
+        return
+      }
+      setQuiz(json.quiz as QuizData)
       setPhase('quiz')
     } catch (e: any) {
-      setError(e?.message ?? 'Unknown error')
+      setError(e?.message ?? 'Failed to load quiz')
     }
   }
 
@@ -160,7 +178,7 @@ export default function TopicQuizModal({
               <>
                 <XCircle className="w-10 h-10 text-red-400" />
                 <p className="text-slate-600 text-sm text-center max-w-xs">{error}</p>
-                <Button size="sm" variant="outline" onClick={generateQuiz}>Try again</Button>
+                <Button size="sm" variant="outline" onClick={loadQuiz}>Try again</Button>
               </>
             ) : (
               <>
@@ -168,8 +186,8 @@ export default function TopicQuizModal({
                   <Sparkles className="w-6 h-6 text-violet-600 animate-pulse" />
                 </div>
                 <div className="text-center">
-                  <p className="text-slate-800 font-medium text-sm">Generating your quiz…</p>
-                  <p className="text-slate-400 text-xs mt-1">AI is reading the content</p>
+                  <p className="text-slate-800 font-medium text-sm">Preparing your quiz…</p>
+                  <p className="text-slate-400 text-xs mt-1">Generating questions, this takes a few seconds</p>
                 </div>
                 <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
               </>
@@ -329,16 +347,15 @@ export default function TopicQuizModal({
                   <RotateCcw className="w-3.5 h-3.5" /> Retake quiz
                 </Button>
               )}
-              {nextTopicHref ? (
+              <Link href={`/training/${subjectId}`}>
+                <Button size="sm" variant={passed ? 'outline' : 'ghost'}>
+                  Back to module
+                </Button>
+              </Link>
+              {passed && nextTopicHref && (
                 <Link href={nextTopicHref}>
-                  <Button size="sm" variant={passed ? 'default' : 'outline'}>
+                  <Button size="sm">
                     Next unit <ArrowRight className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link href={`/training/${subjectId}`}>
-                  <Button size="sm" variant={passed ? 'default' : 'outline'}>
-                    Back to module <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
               )}

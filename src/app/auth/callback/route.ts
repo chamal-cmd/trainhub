@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { resend, FROM } from '@/lib/resend'
+import { welcomeEmail } from '@/lib/emails'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -65,6 +67,18 @@ export async function GET(request: NextRequest) {
         headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ app_metadata: { onboarding_pending: false } }),
       })
+
+      // Send welcome email
+      if (resend && user.email) {
+        const { data: p } = await admin.from('profiles').select('full_name').eq('id', user.id).single()
+        await resend.emails.send({
+          from: FROM,
+          to: user.email,
+          subject: 'Welcome to TrainHub! 🎉',
+          html: welcomeEmail({ fullName: p?.full_name ?? user.email.split('@')[0], appUrl: origin }),
+        }).catch(() => {/* non-fatal */})
+      }
+
       return NextResponse.redirect(new URL('/auth/welcome', origin))
     }
 

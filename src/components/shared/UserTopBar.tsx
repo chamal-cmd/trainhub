@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search, Sparkles, Settings, LogOut, ShieldCheck,
-  Layers, BookOpen, FileText, Wrench, Clock, ArrowRight, X,
+  Layers, BookOpen, FileText, Wrench, Clock, ArrowRight, X, Bell,
 } from 'lucide-react'
 import { AiAssistantPanel } from './AiAssistantPanel'
 import { cn } from '@/lib/utils'
@@ -50,7 +50,10 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
 
   const [aiOpen,   setAiOpen]   = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef   = useRef<HTMLDivElement>(null)
+  const [bellOpen, setBellOpen] = useState(false)
+  const [nudges,   setNudges]   = useState<{ id: string; subjects: { id: string; title: string; emoji: string } }[]>([])
+  const menuRef = useRef<HTMLDivElement>(null)
+  const bellRef = useRef<HTMLDivElement>(null)
 
   // ── Search state ────────────────────────────────────────────────────────────
   const [query,    setQuery]    = useState('')
@@ -61,6 +64,21 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
   const searchRef  = useRef<HTMLDivElement>(null)
   const inputRef   = useRef<HTMLInputElement>(null)
   const itemRefs   = useRef<(HTMLButtonElement | null)[]>([])
+
+  // ── Load nudges ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function loadNudges() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('assignments')
+        .select('id, completed_at, subjects(id, title, emoji)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      setNudges((data ?? []).filter((n: any) => n.subjects && !n.completed_at) as any)
+    }
+    loadNudges()
+  }, [])
 
   // ── Build search index once ─────────────────────────────────────────────────
   const buildIndex = useCallback(async () => {
@@ -109,6 +127,7 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
         setQuery('')
       }
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false)
     }
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
@@ -298,6 +317,93 @@ export function UserTopBar({ userName, userRole, completionRate }: UserTopBarPro
           >
             <Sparkles className={cn('w-5 h-5', aiOpen && 'text-white')} />
           </button>
+
+          {/* ── Bell / Nudges ── */}
+          <div className="relative" ref={bellRef}>
+            <button
+              title="Nudges"
+              onClick={() => setBellOpen(v => !v)}
+              className={cn(
+                'relative w-8 h-8 rounded-full flex items-center justify-center transition-all',
+                bellOpen
+                  ? 'bg-violet-100 text-violet-700'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+              )}
+            >
+              <Bell className="w-[18px] h-[18px]" />
+              {nudges.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center leading-none ring-2 ring-white">
+                  {nudges.length > 9 ? '9+' : nudges.length}
+                </span>
+              )}
+            </button>
+
+            {bellOpen && (
+              <div className="absolute right-0 top-[calc(100%+8px)] w-80 bg-white rounded-2xl shadow-xl shadow-slate-200/80 border border-slate-200 overflow-hidden z-50">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-3.5 h-3.5 text-violet-500" />
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Nudges</span>
+                    {nudges.length > 0 && (
+                      <span className="text-[10px] font-semibold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
+                        {nudges.length} pending
+                      </span>
+                    )}
+                  </div>
+                  {nudges.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        const ids = nudges.map(n => n.id)
+                        setNudges([])
+                        await supabase
+                          .from('assignments')
+                          .update({ completed_at: new Date().toISOString() })
+                          .in('id', ids)
+                      }}
+                      className="text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {nudges.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+                      <Bell className="w-5 h-5 text-slate-300" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-500">All caught up!</p>
+                    <p className="text-xs text-slate-400 mt-1">No nudges from your admin right now</p>
+                  </div>
+                ) : (
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
+                    {nudges.map(n => (
+                      <Link
+                        key={n.id}
+                        href={`/training/${n.subjects.id}`}
+                        onClick={() => setBellOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-xl shrink-0">
+                          {n.subjects.emoji || '📚'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-800 truncate">{n.subjects.title}</p>
+                          <p className="text-xs text-violet-500 mt-0.5">Tap to start training</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-violet-500 shrink-0 transition-colors" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/60">
+                  <p className="text-[10px] text-slate-400 text-center">Tick off to-do items on your dashboard to clear them</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {userRole === 'Administrator' && (
             <Link href="/admin" className="flex items-center gap-1.5 px-3 h-7 rounded-full text-xs font-semibold bg-violet-700 text-white hover:bg-violet-800 transition-colors ml-1 shrink-0">

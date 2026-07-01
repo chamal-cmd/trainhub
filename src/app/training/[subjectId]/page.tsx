@@ -25,7 +25,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     supabase
       .from('subjects')
       .select(`id, title, description, emoji, cover_color,
-        topics(id, title, order_index, steps(id, title, order_index)),
+        topics(id, title, order_index, ai_quiz, steps(id, title, order_index)),
         quizzes(id, title, passing_score)`)
       .eq('id', subjectId)
       .single(),
@@ -65,13 +65,18 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
   const userName = profile?.full_name ?? 'User'
   const userRole = profile?.role === 'admin' ? 'Administrator' : 'Bookkeeper'
 
+  function topicHasQuiz(t: any): boolean {
+    return (t.ai_quiz?.questions?.length ?? 0) > 0
+  }
+
   function topicStatus(t: any): 'completed' | 'quiz_pending' | 'in_progress' | 'not_started' | 'empty' {
     const total = t.steps.length
     const done  = t.steps.filter((s: any) => completedIds.has(s.id)).length
     if (total === 0)   return 'empty'
     if (done === 0)    return 'not_started'
     if (done < total)  return 'in_progress'
-    if (!passedTopicQuizIds.has(t.id)) return 'quiz_pending'
+    // Only quiz_pending if a quiz actually exists and hasn't been passed
+    if (topicHasQuiz(t) && !passedTopicQuizIds.has(t.id)) return 'quiz_pending'
     return 'completed'
   }
 
@@ -79,14 +84,19 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     if (isAdmin || index === 0) return false
     const prev = topics[index - 1]
     if (prev.steps.length === 0) return false
-    return !passedTopicQuizIds.has(prev.id)
+    // If previous topic has a quiz, require passing it
+    if (topicHasQuiz(prev)) return !passedTopicQuizIds.has(prev.id)
+    // No quiz — just require all steps to be complete
+    return !prev.steps.every((s: any) => completedIds.has(s.id))
   }
 
   function topicLockReason(index: number): string {
     if (index === 0) return ''
     const prev = topics[index - 1]
     const prevStepsDone = prev.steps.length > 0 && prev.steps.every((s: any) => completedIds.has(s.id))
-    return prevStepsDone ? `Pass the quiz in "${prev.title}" to unlock` : `Complete "${prev.title}" first`
+    if (!prevStepsDone) return `Complete "${prev.title}" first`
+    if (topicHasQuiz(prev)) return `Pass the quiz in "${prev.title}" to unlock`
+    return `Complete "${prev.title}" first`
   }
 
   return (

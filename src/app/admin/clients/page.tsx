@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
-import { Plus, Building2, ChevronRight, Users, BookOpen, Loader2, Trash2 } from 'lucide-react'
+import { Plus, Building2, ChevronRight, Users, BookOpen, Loader2, Trash2, EyeOff } from 'lucide-react'
 
 interface ClientRow {
   id: string
@@ -38,6 +38,7 @@ export default function AdminClientsPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [needsMigration, setNeedsMigration] = useState(false)
+  const [showEmpty, setShowEmpty] = useState(false)
 
   async function handleDelete(e: React.MouseEvent, id: string, name: string) {
     e.stopPropagation()
@@ -88,6 +89,9 @@ export default function AdminClientsPage() {
     await load()
   }
 
+  const emptyCount = clients.filter(c => c.task_count === 0 && c.assignment_count === 0).length
+  const visibleClients = showEmpty ? clients : clients.filter(c => c.task_count > 0 || c.assignment_count > 0)
+
   return (
     <div className="px-8 py-7 min-h-full bg-[#f8f8f8]">
       {/* Header */}
@@ -98,9 +102,20 @@ export default function AdminClientsPage() {
             Manage client-specific training trackers and team assignments.
           </p>
         </div>
-        <Button onClick={() => { setShowNew(true); setError('') }}>
-          <Plus className="w-4 h-4" /> New Client
-        </Button>
+        <div className="flex items-center gap-2">
+          {!loading && emptyCount > 0 && (
+            <button
+              onClick={() => setShowEmpty(v => !v)}
+              className="flex items-center gap-1.5 px-3 h-9 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              {showEmpty ? 'Hide empty' : `Show empty (${emptyCount})`}
+            </button>
+          )}
+          <Button onClick={() => { setShowNew(true); setError('') }}>
+            <Plus className="w-4 h-4" /> New Client
+          </Button>
+        </div>
       </div>
 
       {/* Migration banner */}
@@ -128,7 +143,7 @@ export default function AdminClientsPage() {
       )}
 
       {/* Empty */}
-      {!loading && !needsMigration && clients.length === 0 && (
+      {!loading && !needsMigration && visibleClients.length === 0 && (
         <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center py-24">
           <Building2 className="w-9 h-9 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">No clients yet</p>
@@ -140,7 +155,7 @@ export default function AdminClientsPage() {
       )}
 
       {/* Table */}
-      {!loading && !needsMigration && clients.length > 0 && (
+      {!loading && !needsMigration && visibleClients.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -152,7 +167,7 @@ export default function AdminClientsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {clients.map(c => (
+              {visibleClients.map(c => (
                 <tr
                   key={c.id}
                   className="group hover:bg-slate-50 transition-colors cursor-pointer"

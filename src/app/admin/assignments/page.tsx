@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -8,24 +8,36 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { Profile, Subject, Assignment } from '@/lib/types'
+import type { Profile, Subject } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, ClipboardList, Trash2, Users, BookOpen } from 'lucide-react'
+import { Plus, Bell, Trash2, Users, ChevronDown, Check } from 'lucide-react'
 
-export default function AssignmentsPage() {
+export default function NudgePage() {
   const supabase = createClient()
   const [assignments, setAssignments] = useState<any[]>([])
   const [users, setUsers] = useState<Profile[]>([])
   const [subjects, setSubjects] = useState<Pick<Subject, 'id' | 'title' | 'emoji' | 'cover_color'>[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [selSubject, setSelSubject] = useState('')
+  const [selSubjects, setSelSubjects] = useState<string[]>([])
+  const [subjectOpen, setSubjectOpen] = useState(false)
   const [selUser, setSelUser] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { loadAll() }, [])
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setSubjectOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   async function loadAll() {
     const [{ data: a }, { data: u }, { data: s }] = await Promise.all([
@@ -43,75 +55,87 @@ export default function AssignmentsPage() {
     setLoading(false)
   }
 
+  function toggleSubject(id: string) {
+    setSelSubjects(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id])
+  }
+
+  function toggleAll() {
+    setSelSubjects(prev => prev.length === subjects.length ? [] : subjects.map(s => s.id))
+  }
+
+  const subjectLabel = selSubjects.length === 0
+    ? 'Select modules...'
+    : selSubjects.length === subjects.length
+      ? 'All modules'
+      : `${selSubjects.length} module${selSubjects.length > 1 ? 's' : ''} selected`
+
+  async function callNudge(subject_id: string, user_id: string, token: string) {
+    return fetch('/api/admin/nudge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ subject_id, user_id, due_date: dueDate || null }),
+    })
+  }
+
   async function handleAssign(e: React.FormEvent) {
     e.preventDefault()
-    if (!selSubject || !selUser) return
+    if (!selSubjects.length || !selUser) return
     setSaving(true)
     setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error: dbErr } = await supabase.from('assignments').insert({
-      subject_id: selSubject,
-      user_id: selUser,
-      assigned_by: user?.id,
-      due_date: dueDate || null,
-    })
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token ?? ''
 
-    if (dbErr) {
-      setError(dbErr.message.includes('unique') ? 'This module is already assigned to this user.' : dbErr.message)
-      setSaving(false)
-      return
-    }
+    await Promise.allSettled(selSubjects.map(sid => callNudge(sid, selUser, token)))
 
     await loadAll()
     setShowModal(false)
-    setSelSubject('')
+    setSelSubjects([])
+    setSelUser('')
+    setDueDate('')
+    setSaving(false)
+  }
+
+  async function handleAssignAll(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!selSubjects.length) return
+    setSaving(true)
+    setError('')
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token ?? ''
+
+    const pairs: Array<[string, string]> = []
+    for (const sid of selSubjects) {
+      for (const u of users) pairs.push([sid, u.id])
+    }
+
+    await Promise.allSettled(pairs.map(([sid, uid]) => callNudge(sid, uid, token)))
+
+    await loadAll()
+    setShowModal(false)
+    setSelSubjects([])
     setSelUser('')
     setDueDate('')
     setSaving(false)
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remove this assignment?')) return
+    if (!confirm('Remove this nudge record?')) return
     await supabase.from('assignments').delete().eq('id', id)
     setAssignments(assignments.filter(a => a.id !== id))
-  }
-
-  // Assign to ALL users
-  async function handleAssignAll(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selSubject) return
-    setSaving(true)
-    setError('')
-
-    const { data: { user } } = await supabase.auth.getUser()
-    const inserts = users.map(u => ({
-      subject_id: selSubject,
-      user_id: u.id,
-      assigned_by: user?.id,
-      due_date: dueDate || null,
-    }))
-
-    const { error: dbErr } = await supabase.from('assignments').upsert(inserts, { onConflict: 'subject_id,user_id' })
-    if (dbErr) { setError(dbErr.message); setSaving(false); return }
-    await loadAll()
-    setShowModal(false)
-    setSelSubject('')
-    setSelUser('')
-    setDueDate('')
-    setSaving(false)
   }
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Assignments</h1>
-          <p className="text-slate-500 text-sm mt-1">Assign training modules to your team</p>
+          <h1 className="text-2xl font-bold text-slate-900">Send Reminders</h1>
+          <p className="text-slate-500 text-sm mt-1">Nudge team members to complete their training modules</p>
         </div>
         <Button onClick={() => setShowModal(true)}>
           <Plus className="w-4 h-4" />
-          Assign Training
+          Send Reminder
         </Button>
       </div>
 
@@ -126,7 +150,7 @@ export default function AssignmentsPage() {
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">User</th>
                 <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">Module</th>
-                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Assigned</th>
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Sent</th>
                 <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Due Date</th>
                 <th className="px-5 py-3 w-10" />
               </tr>
@@ -172,32 +196,59 @@ export default function AssignmentsPage() {
         </div>
       ) : (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-          <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-slate-600 mb-1">No assignments yet</h3>
-          <p className="text-slate-400 text-sm mb-5">Start assigning training modules to your team.</p>
-          <Button onClick={() => setShowModal(true)}><Plus className="w-4 h-4" /> Assign Training</Button>
+          <Bell className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-slate-600 mb-1">No reminders sent yet</h3>
+          <p className="text-slate-400 text-sm mb-5">Nudge a team member to complete their training.</p>
+          <Button onClick={() => setShowModal(true)}><Plus className="w-4 h-4" /> Send Reminder</Button>
         </div>
       )}
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={open => { setShowModal(open); if (!open) { setSelSubjects([]); setSelUser(''); setDueDate(''); setError('') } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Training Module</DialogTitle>
+            <DialogTitle>Send Training Reminder</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAssign} className="space-y-4">
+
+            {/* Multi-select modules */}
             <div className="space-y-1.5">
-              <Label>Training Module</Label>
-              <Select value={selSubject} onValueChange={setSelSubject}>
-                <SelectTrigger><SelectValue placeholder="Select module..." /></SelectTrigger>
-                <SelectContent>
-                  {subjects.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.emoji} {s.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Training Module(s)</Label>
+              <div className="relative" ref={dropRef}>
+                <button
+                  type="button"
+                  onClick={() => setSubjectOpen(v => !v)}
+                  className="flex h-9 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-600"
+                >
+                  <span className={selSubjects.length === 0 ? 'text-slate-400' : 'text-slate-800'}>
+                    {subjectLabel}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                </button>
+                {subjectOpen && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                    <label className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 cursor-pointer border-b border-slate-100">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selSubjects.length === subjects.length ? 'bg-violet-600 border-violet-600' : 'border-slate-300'}`}>
+                        {selSubjects.length === subjects.length && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="text-sm font-semibold text-slate-700">All modules</span>
+                      <input type="checkbox" className="sr-only" checked={selSubjects.length === subjects.length} onChange={toggleAll} />
+                    </label>
+                    {subjects.map(s => (
+                      <label key={s.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${selSubjects.includes(s.id) ? 'bg-violet-600 border-violet-600' : 'border-slate-300'}`}>
+                          {selSubjects.includes(s.id) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="text-sm text-slate-700">{s.emoji} {s.title}</span>
+                        <input type="checkbox" className="sr-only" checked={selSubjects.includes(s.id)} onChange={() => toggleSubject(s.id)} />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
             <div className="space-y-1.5">
-              <Label>Assign To</Label>
+              <Label>Remind Who</Label>
               <Select value={selUser} onValueChange={setSelUser}>
                 <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                 <SelectContent>
@@ -207,6 +258,7 @@ export default function AssignmentsPage() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
               <Label>Due Date (optional)</Label>
               <input
@@ -216,14 +268,16 @@ export default function AssignmentsPage() {
                 className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
               />
             </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
+
             <DialogFooter className="gap-2 flex-wrap">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="button" variant="secondary" loading={saving} onClick={handleAssignAll as any} disabled={!selSubject}>
-                <Users className="w-4 h-4" /> Assign to All Users
+              <Button type="button" variant="secondary" loading={saving} onClick={handleAssignAll} disabled={!selSubjects.length}>
+                <Users className="w-4 h-4" /> Remind All Users
               </Button>
-              <Button type="submit" loading={saving} disabled={!selSubject || !selUser}>
-                <BookOpen className="w-4 h-4" /> Assign
+              <Button type="submit" loading={saving} disabled={!selSubjects.length || !selUser}>
+                <Bell className="w-4 h-4" /> Send Reminder
               </Button>
             </DialogFooter>
           </form>
