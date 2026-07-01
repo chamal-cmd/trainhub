@@ -41,7 +41,8 @@ export default function TopicPage({ params }: PageParams) {
   const [nextTopicHref, setNextTopicHref]   = useState<string | undefined>(undefined)
 
   // Quiz modal
-  const [showQuiz, setShowQuiz] = useState(false)
+  const [showQuiz,        setShowQuiz]        = useState(false)
+  const [isClientTraining, setIsClientTraining] = useState(false)
 
   // Notes
   const [noteText,     setNoteText]     = useState('')
@@ -196,7 +197,7 @@ export default function TopicPage({ params }: PageParams) {
 
     const { data: topic } = await supabase
       .from('topics')
-      .select('title, subjects(title, emoji), steps(id, title, content, order_index)')
+      .select('title, subjects(title, emoji, is_client_training), steps(id, title, content, order_index)')
       .eq('id', topicId)
       .single()
 
@@ -204,6 +205,7 @@ export default function TopicPage({ params }: PageParams) {
       setTopicTitle(topic.title)
       setSubjectTitle((topic.subjects as any)?.title ?? '')
       setSubjectEmoji((topic.subjects as any)?.emoji ?? '📚')
+      setIsClientTraining((topic.subjects as any)?.is_client_training ?? false)
       const sorted = ((topic.steps as any[]) ?? []).sort((a, b) => a.order_index - b.order_index)
       setSteps(sorted)
 
@@ -277,8 +279,7 @@ export default function TopicPage({ params }: PageParams) {
     const allNowDone   = steps.length > 0 && steps.every(s => newCompleted.has(s.id))
 
     if (isLastStep && allNowDone) {
-      // Only launch quiz when the user actually finishes the final step
-      setShowQuiz(true)
+      if (!isClientTraining) setShowQuiz(true)
     } else if (currentStepIdx < steps.length - 1) {
       setCurrentStepIdx(currentStepIdx + 1)
     }
@@ -289,7 +290,7 @@ export default function TopicPage({ params }: PageParams) {
     const newCompleted = await markComplete()
     const isLastStep   = currentStepIdx === steps.length - 1
     const allNowDone   = steps.length > 0 && steps.every(s => newCompleted.has(s.id))
-    if (isLastStep && allNowDone) setShowQuiz(true)
+    if (isLastStep && allNowDone && !isClientTraining) setShowQuiz(true)
   }
 
   const currentStep    = steps[currentStepIdx]
