@@ -132,7 +132,7 @@ ${contentText.slice(0, 4500)}
 
     const quiz = {
       generated_at: new Date().toISOString(),
-      passing_score: 80,
+      passing_score: 70,
       questions: generated.questions.slice(0, 5),
     }
 

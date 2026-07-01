@@ -29,6 +29,20 @@ async function verifyAdmin(token: string): Promise<string | null> {
   return profiles?.[0]?.role === 'admin' ? user.id : null
 }
 
+async function findUserByEmail(email: string): Promise<string | null> {
+  const supabase = adminClient()
+  let page = 1
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 })
+    if (error || !data?.users?.length) break
+    const match = data.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+    if (match) return match.id
+    if (data.users.length < 1000) break
+    page++
+  }
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const token = req.headers.get('Authorization')?.split(' ')[1]

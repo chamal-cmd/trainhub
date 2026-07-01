@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RichTextEditor } from '@/components/shared/RichTextEditor'
@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
   CheckCircle2, ArrowLeft, ArrowRight, Check, BookOpen,
-  Menu, X, FileText, Video, File, Download, Sparkles
+  Menu, X, FileText, Video, File, Download, Sparkles, ChevronDown,
+  StickyNote, Save
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,61 @@ export default function TopicPage({ params }: PageParams) {
 
   // Quiz modal
   const [showQuiz, setShowQuiz] = useState(false)
+
+  // Notes
+  const [noteText,     setNoteText]     = useState('')
+  const [noteSaved,    setNoteSaved]    = useState(true)
+  const [noteSaving,   setNoteSaving]   = useState(false)
+  const [noteOpen,     setNoteOpen]     = useState(false)
+  const noteSaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // SOP expand state: set of attachment indices that are expanded
+  const [expandedSops, setExpandedSops] = useState<Set<string>>(new Set())
+  function toggleSop(key: string) {
+    setExpandedSops(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
+  }
+
+  const loadNote = useCallback(async (stepId: string, uid: string) => {
+    const { data } = await supabase
+      .from('step_notes')
+      .select('content')
+      .eq('user_id', uid)
+      .eq('step_id', stepId)
+      .maybeSingle()
+    setNoteText(data?.content ?? '')
+    setNoteSaved(true)
+  }, [supabase])
+
+  async function saveNote(stepId: string, uid: string, text: string) {
+    setNoteSaving(true)
+    await supabase.from('step_notes').upsert(
+      { user_id: uid, step_id: stepId, content: text, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,step_id' }
+    )
+    setNoteSaving(false)
+    setNoteSaved(true)
+  }
+
+  function handleNoteChange(text: string) {
+    setNoteText(text)
+    setNoteSaved(false)
+    if (noteSaveTimer.current) clearTimeout(noteSaveTimer.current)
+    noteSaveTimer.current = setTimeout(() => {
+      const step = steps[currentStepIdx]
+      if (step && userId) saveNote(step.id, userId, text)
+    }, 1200)
+  }
+
+  // Scroll content area to top whenever the step changes
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentStepIdx])
+
+  useEffect(() => {
+    const step = steps[currentStepIdx]
+    if (step && userId) loadNote(step.id, userId)
+  }, [currentStepIdx, steps, userId, loadNote])
 
   useEffect(() => { loadData() }, [topicId])
 
@@ -161,9 +217,10 @@ export default function TopicPage({ params }: PageParams) {
     // Load progress
     const { data: progress } = await supabase
       .from('step_progress').select('step_id').eq('user_id', user.id)
-    setCompletedIds(new Set(progress?.map(p => p.step_id) ?? []))
+    const completedSet = new Set(progress?.map(p => p.step_id) ?? [])
+    setCompletedIds(completedSet)
 
-    // Load sibling topics to find the next one
+    // Load sibling topics to find the next one + enforce sequential lock
     const { data: allTopics } = await supabase
       .from('topics')
       .select('id, order_index, steps(id, order_index)')
@@ -172,6 +229,21 @@ export default function TopicPage({ params }: PageParams) {
 
     if (allTopics) {
       const idx  = allTopics.findIndex(t => t.id === topicId)
+
+      // Check if this topic is locked (previous topic not fully completed)
+      const { data: profileData } = await supabase
+        .from('profiles').select('role').eq('id', user.id).single()
+      const isAdmin = profileData?.role === 'admin'
+      if (!isAdmin && idx > 0) {
+        const prev = allTopics[idx - 1]
+        const prevSteps = (prev.steps as any[]) ?? []
+        const prevLocked = prevSteps.length > 0 && !prevSteps.every((s: any) => completedSet.has(s.id))
+        if (prevLocked) {
+          router.replace(`/training/${subjectId}`)
+          return
+        }
+      }
+
       const next = allTopics[idx + 1]
       if (next) {
         const firstStep = ((next.steps as any[]) ?? []).sort((a: any, b: any) => a.order_index - b.order_index)[0]
@@ -225,6 +297,8 @@ export default function TopicPage({ params }: PageParams) {
   const completedCount = steps.filter(s => completedIds.has(s.id)).length
   const percent        = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0
   const allDone        = steps.length > 0 && completedCount === steps.length
+  const stepAtts: any[] = (currentStep?.content as any)?.attachments ?? []
+  const hasEmbeddableVideo = stepAtts.some(att => att.type === 'video_url' && resolveEmbedUrl(att.url))
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -328,61 +402,117 @@ export default function TopicPage({ params }: PageParams) {
 
           {/* Content */}
           {currentStep ? (
-            <div className="flex-1 overflow-y-auto">
-              <div className="max-w-2xl mx-auto px-8 py-10">
-                {/* Step header */}
-                <div className="mb-8">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
-                      Step {currentStepIdx + 1}
-                    </span>
-                    {isCurrentDone && (
-                      <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Done
-                      </span>
-                    )}
-                  </div>
-                  <h1 className="text-2xl font-bold text-slate-900 leading-tight">{currentStep.title}</h1>
-                </div>
+            <div className="flex-1 flex min-h-0">
 
-                {/* Attachments */}
-                {(() => {
-                  const atts: any[] = (currentStep.content as any)?.attachments ?? []
-                  if (atts.length === 0) return null
-                  return (
-                    <div className="mb-6 space-y-3">
-                      {atts.map((att: any, idx: number) => {
-                        const isVideo      = att.type === 'video_url'
-                        const isPdf        = att.type === 'pdf'
-                        const embedUrl     = isVideo ? resolveEmbedUrl(att.url) : null
-                        const isEmbeddable = embedUrl !== null
-                        return (
-                          <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-                            {isEmbeddable && embedUrl ? (
-                              <div>
-                                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100">
-                                  <Video className="w-4 h-4 text-purple-500" />
-                                  <span className="text-sm font-medium text-slate-700 truncate">{att.name || 'Video'}</span>
+              {/* ── Main scrollable content ── */}
+              <div ref={contentScrollRef} className="flex-1 overflow-y-auto min-w-0">
+                <div className="max-w-2xl mx-auto px-8 py-10">
+
+                  {/* Step header */}
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
+                        Step {currentStepIdx + 1}
+                      </span>
+                      {isCurrentDone && (
+                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Done
+                        </span>
+                      )}
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 leading-tight">{currentStep.title}</h1>
+                  </div>
+
+                  {/* Attachments */}
+                  {(() => {
+                    const atts: any[] = (currentStep.content as any)?.attachments ?? []
+                    if (atts.length === 0) return null
+                    return (
+                      <div className="mb-6 space-y-3">
+                        {atts.map((att: any, idx: number) => {
+                          const isVideo      = att.type === 'video_url'
+                          const isPdf        = att.type === 'pdf'
+                          const isSop        = att.type === 'sop' || att.type === 'docx'
+                          const embedUrl     = isVideo ? resolveEmbedUrl(att.url) : null
+                          const isEmbeddable = embedUrl !== null
+                          const sopKey       = `${currentStep.id}-${idx}`
+                          const sopExpanded  = expandedSops.has(sopKey)
+
+                          if (isSop) return (
+                            <div key={idx} className="border border-amber-200 bg-amber-50/30 rounded-xl overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+                                    <FileText className="w-4 h-4 text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-800">Standard Operating Procedure</p>
+                                    <p className="text-xs text-slate-500">{att.name}</p>
+                                  </div>
                                 </div>
-                                <div className="aspect-video">
-                                  <iframe src={embedUrl} className="w-full h-full" allowFullScreen allow="encrypted-media" />
+                                <div className="flex items-center gap-2">
+                                  <a href={att.url} download className="flex items-center gap-1.5 text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200 px-3 py-1.5 rounded-lg transition-colors">
+                                    <Download className="w-3 h-3" /> Download
+                                  </a>
+                                  {att.content && (
+                                    <button onClick={() => toggleSop(sopKey)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+                                      <ChevronDown className={cn('w-3 h-3 transition-transform', sopExpanded && 'rotate-180')} />
+                                      {sopExpanded ? 'Collapse' : 'View SOP'}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                            ) : isPdf ? (
-                              <div>
+                              {sopExpanded && att.content && (
+                                <div className="border-t border-amber-200 bg-white px-6 py-5">
+                                  <RichTextEditor content={att.content} readOnly />
+                                </div>
+                              )}
+                            </div>
+                          )
+
+                          return (
+                            <div key={idx} className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                              {isEmbeddable && embedUrl ? (
+                                <div>
+                                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100">
+                                    <Video className="w-4 h-4 text-purple-500" />
+                                    <span className="text-sm font-medium text-slate-700 truncate">{att.name || 'Video'}</span>
+                                  </div>
+                                  <div className="aspect-video">
+                                    <iframe src={embedUrl} className="w-full h-full" allowFullScreen allow="encrypted-media" />
+                                  </div>
+                                </div>
+                              ) : isPdf ? (
+                                <div>
+                                  <div className="flex items-center justify-between px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
+                                        <FileText className="w-4 h-4 text-red-500" />
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium text-slate-700">{att.name}</p>
+                                        <p className="text-xs text-slate-400">PDF Document</p>
+                                      </div>
+                                    </div>
+                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                                      <Download className="w-3 h-3" /> Open PDF
+                                    </a>
+                                  </div>
+                                  <iframe src={att.url + '#toolbar=0'} className="w-full h-96 border-t border-slate-100" />
+                                </div>
+                              ) : (
                                 <div className="flex items-center justify-between px-4 py-3">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center">
-                                      <FileText className="w-4 h-4 text-red-500" />
+                                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                                      <File className="w-4 h-4 text-blue-500" />
                                     </div>
                                     <div>
                                       <p className="text-sm font-medium text-slate-700">{att.name}</p>
-                                      <p className="text-xs text-slate-400">PDF Document</p>
+                                      <p className="text-xs text-slate-400">Attachment</p>
                                     </div>
                                   </div>
-                                  <a href={att.url} target="_blank" rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                                    <Download className="w-3 h-3" /> Open PDF
+                                  <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                                    <Download className="w-3 h-3" /> Download
                                   </a>
                                 </div>
                                 <iframe src={att.url + '#toolbar=0'} className="w-full h-96 border-t border-slate-100" />
@@ -467,43 +597,86 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
-                {/* Navigation */}
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentStepIdx(Math.max(0, currentStepIdx - 1))}
-                    disabled={currentStepIdx === 0}
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Previous
-                  </Button>
+                  {/* Navigation */}
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentStepIdx(Math.max(0, currentStepIdx - 1))}
+                      disabled={currentStepIdx === 0}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                    </Button>
 
-                  <div className="flex items-center gap-2">
-                    {!isCurrentDone && (
-                      <Button variant="outline" size="sm" onClick={markCompleteOnly} loading={marking}>
-                        <Check className="w-3.5 h-3.5" /> Mark done
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!isCurrentDone && (
+                        <Button variant="outline" size="sm" onClick={markCompleteOnly} loading={marking}>
+                          <Check className="w-3.5 h-3.5" /> Mark done
+                        </Button>
+                      )}
 
-                    {currentStepIdx < steps.length - 1 ? (
-                      <Button size="sm" onClick={markAndNext} loading={marking}>
-                        Next <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
-                    ) : (
-                      /* Last step */
-                      allDone ? (
-                        <Button size="sm" variant="success" onClick={() => setShowQuiz(true)}>
-                          <Sparkles className="w-3.5 h-3.5" /> Knowledge Check
+                      {currentStepIdx < steps.length - 1 ? (
+                        <Button size="sm" onClick={markAndNext} loading={marking}>
+                          Next <ArrowRight className="w-3.5 h-3.5" />
                         </Button>
                       ) : (
-                        <Button size="sm" onClick={markAndNext} loading={marking}>
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Finish &amp; Quiz
-                        </Button>
-                      )
-                    )}
+                        allDone ? (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => setShowQuiz(true)}>
+                              <Sparkles className="w-3.5 h-3.5" /> Quiz
+                            </Button>
+                            {nextTopicHref ? (
+                              <Link href={nextTopicHref}>
+                                <Button size="sm">
+                                  Next Unit <ArrowRight className="w-3.5 h-3.5" />
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Link href={`/training/${subjectId}`}>
+                                <Button size="sm" variant="success">
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Module done
+                                </Button>
+                              </Link>
+                            )}
+                          </>
+                        ) : (
+                          <Button size="sm" onClick={markAndNext} loading={marking}>
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Finish &amp; Quiz
+                          </Button>
+                        )
+                      )}
+                    </div>
                   </div>
+
                 </div>
               </div>
+
+              {/* ── Notes sidebar ── */}
+              <div className="w-72 shrink-0 border-l border-slate-100 flex flex-col bg-amber-50/20">
+                <div className="flex items-center gap-2 px-4 py-3.5 border-b border-amber-100 bg-amber-50/60 shrink-0">
+                  <StickyNote className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-semibold text-amber-800">My Notes</span>
+                  <span className="ml-auto text-[10px]">
+                    {noteSaving && <span className="text-slate-400">Saving…</span>}
+                    {!noteSaving && noteSaved && noteText && <span className="text-emerald-500">Saved</span>}
+                    {!noteSaving && !noteSaved && (
+                      <button
+                        onClick={() => { const step = steps[currentStepIdx]; if (step && userId) saveNote(step.id, userId, noteText) }}
+                        className="flex items-center gap-1 font-medium text-violet-600 hover:text-violet-800 transition-colors"
+                      >
+                        <Save className="w-3 h-3" /> Save
+                      </button>
+                    )}
+                  </span>
+                </div>
+                <textarea
+                  value={noteText}
+                  onChange={e => handleNoteChange(e.target.value)}
+                  placeholder="Jot down anything useful for this step…"
+                  className="flex-1 w-full px-4 py-4 text-sm text-slate-700 placeholder:text-slate-300 bg-transparent resize-none focus:outline-none leading-relaxed"
+                />
+              </div>
+
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">

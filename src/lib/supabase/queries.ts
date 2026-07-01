@@ -36,17 +36,16 @@ export const getCompletedStepIds = cache(async (userId: string): Promise<Set<str
   return new Set((data ?? []).map(p => p.step_id))
 })
 
-/** Cached assignment step counts — deduped per request */
-export const getAssignmentSteps = cache(async (userId: string): Promise<string[]> => {
+/** All step IDs across every subject (all subjects are visible to all users) */
+export const getAssignmentSteps = cache(async (_userId: string): Promise<string[]> => {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('assignments')
-    .select('subjects(topics(steps(id)))')
-    .eq('user_id', userId)
-  return (data ?? []).flatMap((a: any) =>
-    (a.subjects as any)?.topics?.flatMap((t: any) =>
-      t.steps?.map((s: any) => s.id) ?? []
-    ) ?? []
+    .from('subjects')
+    .select('topics(steps(id))')
+  return (data ?? []).flatMap((s: any) =>
+    (s.topics ?? []).flatMap((t: any) =>
+      (t.steps ?? []).map((st: any) => st.id)
+    )
   )
 })
 

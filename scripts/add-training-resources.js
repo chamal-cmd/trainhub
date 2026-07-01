@@ -6,8 +6,8 @@
 
 const https = require('https');
 
-const SB_BASE = 'yqefhohpfdcfripuswpw.supabase.co';
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxZWZob2hwZmRjZnJpcHVzd3B3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTQyMDUzMSwiZXhwIjoyMDk0OTk2NTMxfQ.eahjefv_ciK5jELC0x4iNrQhd6SqJngCStLVAXjSJGQ';
+const SB_BASE = process.env.SUPABASE_HOST ?? 'yqefhohpfdcfripuswpw.supabase.co';
+const SB_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 function req(method, path, data) {
   return new Promise((resolve, reject) => {

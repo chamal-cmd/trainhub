@@ -80,17 +80,11 @@ export default async function UserDashboard() {
     return { subject, readMins, overdueDays, percent, completed, total, color }
   })
 
-  const inProgress  = modules.filter(m => m.percent > 0 && m.percent < 100)
-  const todo        = modules.filter(m => m.percent === 0)
-  const done        = modules.filter(m => m.percent === 100)
+  const inProgress = modules.filter(m => m.percent > 0 && m.percent < 100)
+  const todo       = modules.filter(m => m.percent === 0)
+  const done       = modules.filter(m => m.percent === 100)
 
-  const allTodo = [...inProgress, ...todo].sort((a, b) => {
-    if (a.overdueDays > 0 && b.overdueDays <= 0) return -1
-    if (b.overdueDays > 0 && a.overdueDays <= 0) return 1
-    if (a.percent > 0 && b.percent === 0) return -1
-    if (b.percent > 0 && a.percent === 0) return 1
-    return 0
-  })
+  const allTodo = [...inProgress, ...todo]
 
   // Overall stats
   const totalSteps     = modules.reduce((s, m) => s + m.total, 0)
@@ -143,7 +137,6 @@ export default async function UserDashboard() {
             </p>
           </div>
 
-          {/* Stats row */}
           {modules.length > 0 && (
             <div className="flex items-center gap-4 shrink-0">
               <StatPill icon={<BookOpen className="w-3.5 h-3.5" />} value={modules.length} label="Modules" color="violet" />
@@ -220,7 +213,6 @@ export default async function UserDashboard() {
               </div>
             )}
 
-            {/* Weekly streak */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Flame className="w-4 h-4 text-orange-400" />
@@ -297,11 +289,8 @@ function StatPill({ icon, value, label, color }: { icon: React.ReactNode; value:
   )
 }
 
-// ── Jump Back In — featured hero card ────────────────────────────────────────
-
 function JumpBackCard({ m }: { m: any }) {
   const color = m.color || '#7C3AED'
-  const firstTopic = m.subject?.topics?.[0]
   const href = `/training/${m.subject.id}`
 
   return (
@@ -311,7 +300,6 @@ function JumpBackCard({ m }: { m: any }) {
         style={{ background: `linear-gradient(135deg, ${color}18 0%, ${color}08 100%)`, borderColor: `${color}30` }}
       >
         <div className="flex items-center gap-6 px-6 py-5">
-          {/* Emoji */}
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-sm"
             style={{ background: `${color}25` }}
@@ -319,7 +307,6 @@ function JumpBackCard({ m }: { m: any }) {
             {m.subject.emoji || '📚'}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color }}>Continue learning</p>
             <h3 className="font-bold text-slate-900 text-lg leading-tight truncate">{m.subject.title}</h3>
@@ -332,7 +319,6 @@ function JumpBackCard({ m }: { m: any }) {
             </div>
           </div>
 
-          {/* Arrow */}
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform"
             style={{ background: color }}
@@ -442,8 +428,6 @@ function ModuleCard({ m, isDone = false, locked = false }: { m: any; isDone?: bo
   return <Link href={`/training/${subject.id}`}>{card}</Link>
 }
 
-// ── Progress Ring (SVG donut) ─────────────────────────────────────────────────
-
 function ProgressRing({ pct, inProgress, done, total }: { pct: number; inProgress: number; done: number; total: number }) {
   const r = 52; const cx = 68; const cy = 68
   const circ = 2 * Math.PI * r
@@ -455,23 +439,19 @@ function ProgressRing({ pct, inProgress, done, total }: { pct: number; inProgres
     <div className="flex flex-col items-center">
       <div className="relative">
         <svg width="136" height="136" viewBox="0 0 136 136">
-          {/* Track */}
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="13" />
-          {/* Not started (light grey) */}
           {remaining > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="13"
               strokeDasharray={`${remaining * circ} ${circ}`}
               strokeDashoffset={-(doneFrac + progressFrac) * circ + circ * 0.25}
               strokeLinecap="round" />
           )}
-          {/* In progress (orange) */}
           {progressFrac > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fb923c" strokeWidth="13"
               strokeDasharray={`${progressFrac * circ} ${circ}`}
               strokeDashoffset={-doneFrac * circ + circ * 0.25}
               strokeLinecap="round" />
           )}
-          {/* Completed (violet) */}
           {doneFrac > 0.01 && (
             <circle cx={cx} cy={cy} r={r} fill="none" stroke="#7C3AED" strokeWidth="13"
               strokeDasharray={`${doneFrac * circ} ${circ}`}
@@ -503,5 +483,4 @@ function LegendRow({ color, label, value }: { color: string; label: string; valu
   )
 }
 
-// React type import needed for JSX
 import React from 'react'

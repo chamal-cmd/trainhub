@@ -46,7 +46,7 @@ export default function NudgePage() {
         profiles!assignments_user_id_fkey(id, full_name, email),
         subjects(id, title, emoji, cover_color)
       `).order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').eq('role', 'user').order('full_name'),
+      supabase.from('profiles').select('*').neq('role', 'admin').order('full_name'),
       supabase.from('subjects').select('id, title, emoji, cover_color').order('order_index', { ascending: true }),
     ])
     setAssignments(a ?? [])
@@ -261,12 +261,15 @@ export default function NudgePage() {
 
             <div className="space-y-1.5">
               <Label>Due Date (optional)</Label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-              />
+              <div className="relative">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600 focus:border-transparent cursor-pointer"
+                />
+              </div>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
