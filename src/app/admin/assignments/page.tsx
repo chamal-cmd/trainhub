@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Profile, Subject } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
-import { Plus, Bell, Trash2, Users, ChevronDown, Check } from 'lucide-react'
+import { Plus, Bell, Trash2, Users, ChevronDown, Check, CalendarDays } from 'lucide-react'
 
 export default function NudgePage() {
   const supabase = createClient()

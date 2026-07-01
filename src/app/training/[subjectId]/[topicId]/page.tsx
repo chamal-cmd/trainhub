@@ -515,24 +515,6 @@ export default function TopicPage({ params }: PageParams) {
                                     <Download className="w-3 h-3" /> Download
                                   </a>
                                 </div>
-                                <iframe src={att.url + '#toolbar=0'} className="w-full h-96 border-t border-slate-100" />
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-between px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                                    <File className="w-4 h-4 text-blue-500" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-slate-700">{att.name}</p>
-                                    <p className="text-xs text-slate-400">Attachment</p>
-                                  </div>
-                                </div>
-                                <a href={att.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                                  <Download className="w-3 h-3" /> Download
-                                </a>
-                              </div>
                             )}
                           </div>
                         )

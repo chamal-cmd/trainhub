@@ -12,7 +12,7 @@ export default async function LibraryPage() {
 
   const supabase = await createClient()
 
-  const [subjectsRes, progressRes, quizAttemptsRes] = await Promise.all([
+  const [subjectsRes, progressRes, quizAttemptsRes, profile] = await Promise.all([
     supabase
       .from('subjects')
       .select('id, title, description, emoji, cover_color, order_index, topics(id, steps(id)), quizzes(id)')
@@ -22,23 +22,9 @@ export default async function LibraryPage() {
     getProfile(user.id),
   ])
 
+  const completedStepIds = new Set((progressRes.data ?? []).map((r: any) => r.step_id))
+  const passedQuizIds    = new Set((quizAttemptsRes.data ?? []).map((r: any) => r.quiz_id))
   const isAdmin = profile?.role === 'admin'
-
-  // Build module list from all subjects, sorted by order_index
-  const modules = (subjectsRes.data ?? [])
-    .map(subject => {
-      const allSteps: string[] = (subject.topics as any[])?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
-      const completed   = allSteps.filter(id => completedStepIds.has(id)).length
-      const total       = allSteps.length
-      const percent     = total > 0 ? Math.round((completed / total) * 100) : 0
-      const quiz        = (subject.quizzes as any[])?.[0] ?? null
-      const quizPassed  = !quiz || passedQuizIds.has(quiz.id)
-      const stepsAllDone = total > 0 && completed === total
-      const fullyDone   = stepsAllDone && quizPassed
-      const quizPending = stepsAllDone && quiz && !quizPassed
-      const readMins    = Math.max(2, total * 3)
-      return { subject, allSteps, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, dueDate: null as Date | null, locked: false }
-    })
 
   const allModules = (subjectsRes.data ?? []).map((subject: any) => {
     const allSteps: string[] = subject.topics?.flatMap((t: any) => t.steps?.map((s: any) => s.id) ?? []) ?? []
