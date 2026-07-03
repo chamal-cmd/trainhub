@@ -62,6 +62,38 @@ export default function ClientTrackerPage({ params }: Params) {
 
   useEffect(() => { loadAll() }, [assignmentId])
 
+  // Live sync: when admin edits a task/subtask, update immediately without a reload
+  useEffect(() => {
+    if (loading) return
+
+    const channel = supabase
+      .channel(`client-tracker-${assignmentId}-live`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'client_subtasks',
+      }, (payload) => {
+        const updated = payload.new as any
+        setTasks(prev => prev.map(t => ({
+          ...t,
+          client_subtasks: (t.client_subtasks ?? []).some((s: any) => s.id === updated.id)
+            ? t.client_subtasks.map((s: any) => s.id === updated.id ? { ...s, ...updated } : s)
+            : t.client_subtasks,
+        })))
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'client_tasks',
+      }, (payload) => {
+        const updated = payload.new as any
+        setTasks(prev => prev.map(t => t.id === updated.id ? { ...t, title: updated.title } : t))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [loading, assignmentId])
+
   async function loadAll() {
     setLoading(true)
 

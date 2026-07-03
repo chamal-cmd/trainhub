@@ -546,23 +546,40 @@ export default function TopicPage({ params }: PageParams) {
 
                 {/* Content */}
                 {isAdmin ? (
-                  <div className={cn(
-                    'rounded-2xl border p-6 mb-6 transition-all',
-                    isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
-                  )}>
+                  <>
+                    {/* Plain-text video links (legacy imports) still render as embeds for preview */}
+                    {(() => {
+                      const allNodes: any[] = (currentStep.content as any)?.content ?? []
+                      const videoUrls = allNodes
+                        .filter((n: any) => n.type === 'paragraph' && n.content?.length === 1)
+                        .map((n: any) => (n.content[0].text ?? '').trim())
+                        .filter((t: string) => resolveEmbedUrl(t))
+                      return videoUrls.map((url, i) => (
+                        <div key={i} className="rounded-2xl overflow-hidden border border-slate-100 mb-4 bg-black shadow-sm">
+                          <div className="aspect-video">
+                            <iframe src={resolveEmbedUrl(url)!} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
+                          </div>
+                        </div>
+                      ))
+                    })()}
                     <div className={cn(
-                      'flex items-center gap-1.5 text-xs text-emerald-600 mb-3 transition-opacity duration-300',
-                      contentSaved ? 'opacity-100' : 'opacity-0'
+                      'rounded-2xl border p-6 mb-6 transition-all',
+                      isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
                     )}>
-                      <Check className="w-3 h-3" /> Saved
+                      <div className={cn(
+                        'flex items-center gap-1.5 text-xs text-emerald-600 mb-3 transition-opacity duration-300',
+                        contentSaved ? 'opacity-100' : 'opacity-0'
+                      )}>
+                        <Check className="w-3 h-3" /> Saved
+                      </div>
+                      <RichTextEditor
+                        key={currentStep.id}
+                        content={currentStep.content}
+                        onChange={handleContentChange}
+                        placeholder="Start writing your step content here…"
+                      />
                     </div>
-                    <RichTextEditor
-                      key={currentStep.id}
-                      content={currentStep.content}
-                      onChange={handleContentChange}
-                      placeholder="Start writing your step content here…"
-                    />
-                  </div>
+                  </>
                 ) : currentStep.content && (() => {
                   const allNodes: any[] = (currentStep.content as any)?.content ?? []
 

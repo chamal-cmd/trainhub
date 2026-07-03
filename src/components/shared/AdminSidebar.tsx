@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   LayoutDashboard, BookOpen, Users, Bell,
   BarChart3, LogOut, GraduationCap, HelpCircle, Eye, Brain, Building2, FileText, TrendingUp,
@@ -65,6 +65,17 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
+  // /admin/subjects/[id] is shared by both regular and client-training modules —
+  // look up which one this id is so the correct nav item highlights.
+  const [openSubjectIsClientTraining, setOpenSubjectIsClientTraining] = useState(false)
+  useEffect(() => {
+    const match = pathname.match(/^\/admin\/subjects\/([0-9a-f-]{36})/)
+    if (!match) { setOpenSubjectIsClientTraining(false); return }
+    const supabase = createClient()
+    supabase.from('subjects').select('is_client_training').eq('id', match[1]).single()
+      .then(({ data }) => setOpenSubjectIsClientTraining(!!data?.is_client_training))
+  }, [pathname])
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -73,6 +84,8 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   }
 
   function isActive(href: string, exact?: boolean) {
+    if (href === '/admin/subjects') return pathname.startsWith(href) && !openSubjectIsClientTraining
+    if (href === '/admin/clients')  return pathname.startsWith(href) || openSubjectIsClientTraining
     if (exact) return pathname === href
     return pathname.startsWith(href)
   }
