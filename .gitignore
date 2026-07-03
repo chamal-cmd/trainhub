@@ -8,6 +8,8 @@ node_modules/
 out/
 dist/
 build/
+.open-next/
+.wrangler/
 
 # Env files — NEVER commit secrets
 .env

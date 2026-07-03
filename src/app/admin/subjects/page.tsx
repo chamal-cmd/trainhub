@@ -59,6 +59,7 @@ export default function SubjectsPage() {
         .from('subjects')
         .select(`id, title, description, emoji, cover_color, created_at, updated_at, order_index,
                  topics(id, steps(id)), quizzes(id), assignments(id)`)
+        .eq('is_client_training', false)
         .order('order_index', { ascending: true }),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ])

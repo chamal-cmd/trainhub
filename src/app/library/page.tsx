@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { getUser, getProfile } from '@/lib/supabase/queries'
 import Link from 'next/link'
-import { CheckCircle2, Clock, Lock, ChevronRight, Trophy, Sparkles, ShieldCheck, FileText, FolderOpen } from 'lucide-react'
+import { CheckCircle2, Clock, Lock, ChevronRight, Trophy, Sparkles, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default async function LibraryPage() {
@@ -16,6 +16,8 @@ export default async function LibraryPage() {
     supabase
       .from('subjects')
       .select('id, title, description, emoji, cover_color, order_index, topics(id, steps(id)), quizzes(id)')
+      .eq('is_client_training', false)
+      .lt('order_index', 1000)
       .order('order_index'),
     supabase.from('step_progress').select('step_id').eq('user_id', user.id),
     supabase.from('quiz_attempts').select('quiz_id').eq('user_id', user.id).eq('passed', true),
@@ -37,13 +39,10 @@ export default async function LibraryPage() {
     const fullyDone   = quiz ? quizPassed : stepsAllDone
     const quizPending = stepsAllDone && !!quiz && !quizPassed
     const readMins    = Math.max(2, total * 3)
-    const isSop       = subject.order_index >= 1000
-    return { subject, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, locked: false, isSop }
+    return { subject, completed, total, percent, quiz, quizPassed, stepsAllDone, fullyDone, quizPending, readMins, locked: false }
   })
 
-  // Split into training modules and client SOP modules
-  const modules    = allModules.filter(m => !m.isSop)
-  const sopModules = allModules.filter(m => m.isSop)
+  const modules = allModules
 
   // Sequential lock: only for regular users, only for training modules
   if (!isAdmin) {
@@ -215,58 +214,6 @@ export default async function LibraryPage() {
         </div>
       )}
 
-      {/* ── Client SOPs Section ───────────────────────────────────────────── */}
-      {sopModules.length > 0 && (
-        <div id="sops" className="mt-10 max-w-2xl">
-          {/* Section header */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
-              <FolderOpen className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Client SOPs</h2>
-              <p className="text-xs text-slate-400">Standard Operating Procedures — download and follow for each client task</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {sopModules.map((m) => {
-              const { subject, total } = m
-              const clientName = subject.title.replace(/^SOPs\s*—\s*/, '')
-              return (
-                <Link key={subject.id} href={`/training/${subject.id}`}>
-                  <div className="group bg-white rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 overflow-hidden cursor-pointer">
-                    <div className="h-1 w-full" style={{ backgroundColor: subject.cover_color ?? '#334155' }} />
-                    <div className="flex items-center gap-4 p-4">
-                      {/* Client emoji */}
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                        style={{ backgroundColor: (subject.cover_color ?? '#334155') + '20' }}
-                      >
-                        {subject.emoji ?? '🏥'}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-800 group-hover:text-slate-900 leading-snug">
-                          {clientName}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <FileText className="w-3 h-3 text-slate-400" />
-                          <span className="text-[11px] text-slate-400">{total} SOP document{total !== 1 ? 's' : ''}</span>
-                        </div>
-                      </div>
-
-                      {/* Right */}
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

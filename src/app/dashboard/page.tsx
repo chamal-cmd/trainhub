@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { AiLaunchCard } from '@/components/shared/AiLaunchCard'
 import { NudgeTodoSection } from '@/components/shared/NudgeTodoSection'
+import { Greeting } from '@/components/shared/Greeting'
 import { cn } from '@/lib/utils'
 
 export default async function UserDashboard() {
@@ -126,7 +127,7 @@ export default async function UserDashboard() {
         <div className="max-w-5xl mx-auto flex items-start justify-between gap-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-              Good {getGreeting()}, {firstName} 👋
+              <Greeting firstName={firstName} />
             </h1>
             <p className="text-slate-500 mt-1.5 text-sm">
               {allTodo.length > 0
@@ -248,15 +249,6 @@ export default async function UserDashboard() {
       </div>
     </div>
   )
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'morning'
-  if (h < 17) return 'afternoon'
-  return 'evening'
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

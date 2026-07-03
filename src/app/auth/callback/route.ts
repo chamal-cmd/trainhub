@@ -1,17 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdmin } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { resend, FROM } from '@/lib/resend'
-import { welcomeEmail } from '@/lib/emails'
-
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-function adminClient() {
-  return createAdmin(SB_URL, SVC, { auth: { autoRefreshToken: false, persistSession: false } })
-}
+import { welcomeEmail, newMemberEmail } from '@/lib/emails'
 
 export async function GET(request: NextRequest) {
+  // Read secrets at request time — Cloudflare Workers secrets aren't available at module load
+  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const SVC    = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const RESEND_KEY = process.env.RESEND_API_KEY
+  const FROM = process.env.RESEND_FROM ?? 'TrainHub <onboarding@resend.dev>'
+
+  async function sbAdmin(path: string, opts?: RequestInit) {
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
+      ...opts,
+      headers: { apikey: SVC, Authorization: `Bearer ${SVC}`, 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+    })
+    if (!r.ok) return null
+    return r.json()
+  }
   const { searchParams } = new URL(request.url)
   const code  = searchParams.get('code')
   const error = searchParams.get('error')
@@ -41,16 +46,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/reset-password', origin))
     }
 
-    const admin = adminClient()
-
     // 1. Look up profile by user ID
-    let { data: profile } = await admin.from('profiles').select('id, role').eq('id', user.id).single()
+    const profiles1: any[] = await sbAdmin(`profiles?id=eq.${user.id}&select=id,role`) ?? []
+    let profile: { id: string; role: string } | null = profiles1[0] ?? null
 
     // 2. If not found by ID, look up by email (handles Google re-auth creating a new UUID)
     if (!profile && user.email) {
-      const { data: byEmail } = await admin.from('profiles').select('id, role').eq('email', user.email).single()
+      const profiles2: any[] = await sbAdmin(`profiles?email=eq.${encodeURIComponent(user.email)}&select=id,role`) ?? []
+      const byEmail = profiles2[0] ?? null
       if (byEmail) {
-        await admin.from('profiles').update({ id: user.id }).eq('id', byEmail.id)
+        await sbAdmin(`profiles?id=eq.${byEmail.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ id: user.id }),
+        })
         profile = { ...byEmail, id: user.id }
       }
     }
@@ -64,19 +72,35 @@ export async function GET(request: NextRequest) {
     if (user.app_metadata?.onboarding_pending) {
       await fetch(`${SB_URL}/auth/v1/admin/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
+        headers: { apikey: SVC, Authorization: `Bearer ${SVC}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ app_metadata: { onboarding_pending: false } }),
       })
 
-      // Send welcome email
-      if (resend && user.email) {
-        const { data: p } = await admin.from('profiles').select('full_name').eq('id', user.id).single()
-        await resend.emails.send({
-          from: FROM,
-          to: user.email,
-          subject: 'Welcome to TrainHub! 🎉',
-          html: welcomeEmail({ fullName: p?.full_name ?? user.email.split('@')[0], appUrl: origin }),
-        }).catch(() => {/* non-fatal */})
+      // Send welcome email + admin notification
+      if (RESEND_KEY && user.email) {
+        const pRows: any[] = await sbAdmin(`profiles?id=eq.${user.id}&select=full_name`) ?? []
+        const fullName = pRows[0]?.full_name ?? user.email.split('@')[0]
+
+        // Get all admin emails to notify
+        const adminRows: any[] = await sbAdmin(`profiles?role=eq.admin&select=email`) ?? []
+        const adminEmails = adminRows.map((a: any) => a.email).filter(Boolean)
+
+        await Promise.allSettled([
+          // Welcome email to new user
+          fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from: FROM, to: user.email, subject: 'Welcome to TrainHub! 🎉', html: welcomeEmail({ fullName, appUrl: origin }) }),
+          }),
+          // Notification to all admins
+          ...adminEmails.map(adminEmail =>
+            fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ from: FROM, to: adminEmail, subject: `${fullName} just joined TrainHub 👋`, html: newMemberEmail({ userName: fullName, userEmail: user.email!, appUrl: origin }) }),
+            })
+          ),
+        ])
       }
 
       return NextResponse.redirect(new URL('/auth/welcome', origin))

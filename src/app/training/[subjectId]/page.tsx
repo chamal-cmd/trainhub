@@ -24,7 +24,7 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
     supabase.from('profiles').select('full_name, role').eq('id', user.id).single(),
     supabase
       .from('subjects')
-      .select(`id, title, description, emoji, cover_color,
+      .select(`id, title, description, emoji, cover_color, is_client_training,
         topics(id, title, order_index, ai_quiz, steps(id, title, order_index)),
         quizzes(id, title, passing_score)`)
       .eq('id', subjectId)
@@ -106,11 +106,11 @@ export default async function TrainingSubjectPage({ params }: PageParams) {
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-100">
         <div className="flex items-center gap-3 px-6 h-12">
           <Link
-            href="/dashboard"
+            href={(subject as any).is_client_training ? '/client-training' : '/dashboard'}
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Home</span>
+            <span className="hidden sm:inline">{(subject as any).is_client_training ? 'Client Training' : 'Home'}</span>
           </Link>
           <span className="text-slate-200">/</span>
           <span className="text-sm font-semibold text-slate-700 truncate">{subject.title}</span>

@@ -36,6 +36,11 @@ export default function TopicPage({ params }: PageParams) {
   const [loading,        setLoading]        = useState(true)
   const [userId,         setUserId]         = useState('')
   const [sidebarOpen,    setSidebarOpen]    = useState(true)
+  const [isAdmin,        setIsAdminState]   = useState(false)
+
+  // Admin inline content editing
+  const [contentSaved,   setContentSaved]   = useState(false)
+  const contentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Next-topic info (for post-quiz navigation)
   const [nextTopicHref, setNextTopicHref]   = useState<string | undefined>(undefined)
@@ -155,6 +160,7 @@ export default function TopicPage({ params }: PageParams) {
     // ── Sequential lock check ─────────────────────────────────────────────────
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     const isAdmin = profile?.role === 'admin'
+    setIsAdminState(isAdmin)
 
     if (!isAdmin) {
       const { data: allTopics } = await supabase
@@ -292,6 +298,20 @@ export default function TopicPage({ params }: PageParams) {
     const allNowDone   = steps.length > 0 && steps.every(s => newCompleted.has(s.id))
     if (isLastStep && allNowDone && !isClientTraining) setShowQuiz(true)
   }
+
+  // ── Admin: edit step content in place, autosaved ─────────────────────────
+  const handleContentChange = useCallback((content: object) => {
+    const step = steps[currentStepIdx]
+    if (!step) return
+    setSteps(prev => prev.map(s => (s.id === step.id ? { ...s, content } : s)))
+    setContentSaved(false)
+    if (contentSaveTimer.current) clearTimeout(contentSaveTimer.current)
+    contentSaveTimer.current = setTimeout(async () => {
+      await supabase.from('steps').update({ content }).eq('id', step.id)
+      setContentSaved(true)
+      setTimeout(() => setContentSaved(false), 2000)
+    }, 1000)
+  }, [steps, currentStepIdx, supabase])
 
   const currentStep    = steps[currentStepIdx]
   const isCurrentDone  = currentStep ? completedIds.has(currentStep.id) : false
@@ -524,8 +544,26 @@ export default function TopicPage({ params }: PageParams) {
                   )
                 })()}
 
-                {/* Content: split URL-only paragraphs → video embeds; rest → rich text */}
-                {currentStep.content && (() => {
+                {/* Content */}
+                {isAdmin ? (
+                  <div className={cn(
+                    'rounded-2xl border p-6 mb-6 transition-all',
+                    isCurrentDone ? 'border-emerald-100 bg-emerald-50/30' : 'border-slate-100 bg-white'
+                  )}>
+                    <div className={cn(
+                      'flex items-center gap-1.5 text-xs text-emerald-600 mb-3 transition-opacity duration-300',
+                      contentSaved ? 'opacity-100' : 'opacity-0'
+                    )}>
+                      <Check className="w-3 h-3" /> Saved
+                    </div>
+                    <RichTextEditor
+                      key={currentStep.id}
+                      content={currentStep.content}
+                      onChange={handleContentChange}
+                      placeholder="Start writing your step content here…"
+                    />
+                  </div>
+                ) : currentStep.content && (() => {
                   const allNodes: any[] = (currentStep.content as any)?.content ?? []
 
                   const videoUrls: string[] = []

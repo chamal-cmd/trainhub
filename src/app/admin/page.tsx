@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { BookOpen, Users, ClipboardCheck, Award, ArrowUpRight, Activity, TrendingUp, Plus, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { Greeting } from '@/components/shared/Greeting'
 import { formatRelativeDate } from '@/lib/utils'
 
 export default async function AdminDashboard() {
@@ -91,7 +92,7 @@ export default async function AdminDashboard() {
       <div className="flex items-start justify-between mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Good morning, {firstName} 👋
+            <Greeting firstName={firstName} />
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Here's what's happening with your training platform.

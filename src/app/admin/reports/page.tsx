@@ -5,8 +5,14 @@ import { createClient } from '@/lib/supabase/server'
 import { cn, getInitials } from '@/lib/utils'
 import {
   Users, BookOpen, CheckCircle2, TrendingUp,
-  Building2, ChevronRight, AlertTriangle,
+  Building2, AlertTriangle,
 } from 'lucide-react'
+import ReportsClient, { type ProgressRow, type QuizRow, type OverviewRow } from './ReportsClient'
+
+function fmtDate(d: string | null | undefined) {
+  if (!d) return 'Never'
+  return new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -51,12 +57,12 @@ export default async function ReportsPage() {
     { data: clientAssignments },
     { data: subtaskProgress },
   ] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, email').eq('role', 'user').order('full_name'),
+    supabase.from('profiles').select('id, full_name, email, created_at').eq('role', 'user').order('full_name'),
     supabase.from('assignments').select(`
       user_id, subject_id,
       subjects(id, title, emoji, topics(steps(id)))
     `),
-    supabase.from('step_progress').select('user_id, step_id'),
+    supabase.from('step_progress').select('user_id, step_id, created_at'),
     supabase.from('clients')
       .select('id, name, client_tasks(id, client_subtasks(id, video_url))')
       .order('name'),
@@ -66,6 +72,18 @@ export default async function ReportsPage() {
     `),
     supabase.from('client_subtask_progress').select('assignment_id, status'),
   ])
+
+  // Extra queries for CSV downloads
+  let quizAttempts: any[] = []
+  let quizTitles: any[] = []
+  try {
+    const [qa, qt] = await Promise.all([
+      supabase.from('quiz_attempts').select('user_id, quiz_id, passed, score, completed_at').order('completed_at', { ascending: false }),
+      supabase.from('quizzes').select('id, title'),
+    ])
+    quizAttempts = qa.data ?? []
+    quizTitles   = qt.data ?? []
+  } catch { /* quiz tables may not exist */ }
 
   // ── KB: per-user stats ────────────────────────────────────────────────────
 
@@ -138,6 +156,60 @@ export default async function ReportsPage() {
     }))
     .sort((a, b) => b.assignedCount - a.assignedCount)
 
+  // ── CSV download data ─────────────────────────────────────────────────────
+
+  // last active per user (most recent step_progress.created_at)
+  const lastActiveByUser: Record<string, string> = {}
+  for (const p of (stepProgress ?? [])) {
+    if (!lastActiveByUser[p.user_id] || (p as any).created_at > lastActiveByUser[p.user_id])
+      lastActiveByUser[p.user_id] = (p as any).created_at
+  }
+
+  const quizTitleMap: Record<string, string> = Object.fromEntries((quizTitles ?? []).map((q: any) => [q.id, q.title]))
+
+  const progressRows: ProgressRow[] = userStats.flatMap(u =>
+    u.moduleProgress.map(m => ({
+      name:       u.full_name ?? '',
+      email:      u.email ?? '',
+      module:     `${m.emoji} ${m.title}`,
+      done:       m.completed,
+      total:      m.total,
+      pct:        m.stepPercent,
+      status:     m.isComplete ? 'Completed' : m.completed > 0 ? 'In Progress' : 'Not Started',
+      lastActive: fmtDate(lastActiveByUser[u.id]),
+      joined:     fmtDate((u as any).created_at),
+    }))
+  )
+
+  const quizRows: QuizRow[] = (quizAttempts ?? []).map((a: any) => {
+    const u = (users ?? []).find((p: any) => p.id === a.user_id)
+    return {
+      name:   u?.full_name ?? '',
+      email:  u?.email ?? '',
+      quiz:   quizTitleMap[a.quiz_id] ?? a.quiz_id,
+      score:  a.score ?? 0,
+      passed: a.passed ?? false,
+      date:   fmtDate(a.completed_at),
+    }
+  })
+
+  const overviewRows: OverviewRow[] = userStats.map(u => {
+    const userAttempts = (quizAttempts ?? []).filter((a: any) => a.user_id === u.id)
+    return {
+      name:            u.full_name ?? '',
+      email:           u.email ?? '',
+      modulesAssigned: u.totalAssigned,
+      modulesComplete: u.completedModules,
+      overallPct:      u.overallPercent,
+      stepsDone:       u.moduleProgress.reduce((s, m) => s + m.completed, 0),
+      stepsTotal:      u.moduleProgress.reduce((s, m) => s + m.total, 0),
+      quizPassed:      userAttempts.filter((a: any) => a.passed).length,
+      quizTotal:       userAttempts.length,
+      lastActive:      fmtDate(lastActiveByUser[u.id]),
+      joined:          fmtDate((u as any).created_at),
+    }
+  })
+
   // ── Client training stats ─────────────────────────────────────────────────
 
   const clientStats = (clients ?? [])
@@ -189,6 +261,15 @@ export default async function ReportsPage() {
         <p className="text-sm text-slate-500 mt-1">
           Completion rates are based on fully finished modules — all steps done counts as one complete module.
         </p>
+      </div>
+
+      {/* ── Downloads ──────────────────────────────────────────────────── */}
+      <div className="mb-8">
+        <ReportsClient
+          progressRows={progressRows}
+          quizRows={quizRows}
+          overviewRows={overviewRows}
+        />
       </div>
 
       {/* ── Summary cards ──────────────────────────────────────────────── */}

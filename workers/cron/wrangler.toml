@@ -1,0 +1,9 @@
+name = "trainhub-cron"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+[triggers]
+crons = ["0 23 * * SUN"]
+# Sunday 11pm UTC = Monday 10am AEST (UTC+11) / 9am AEST (UTC+10)
+
+# Secret — set via: npx wrangler secret put CRON_SECRET --config workers/cron/wrangler.toml

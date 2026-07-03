@@ -56,6 +56,39 @@ export function inviteEmail({
   `)
 }
 
+export function reminderEmail({
+  userName,
+  modules,
+  appUrl,
+}: {
+  userName: string
+  modules: { emoji: string; title: string; completed: number; total: number }[]
+  appUrl: string
+}) {
+  const rows = modules.map(m => `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="card-value">${m.emoji} ${m.title}</div>
+        <div style="font-size:12px;color:#7c3aed;font-weight:600;white-space:nowrap;margin-left:12px;">${m.completed}/${m.total} steps</div>
+      </div>
+      <div style="margin-top:6px;background:#e9d5ff;border-radius:4px;height:4px;">
+        <div style="background:#7c3aed;border-radius:4px;height:4px;width:${Math.round((m.completed/m.total)*100)}%;"></div>
+      </div>
+    </div>
+  `).join('')
+
+  return base(`
+    <h1>You have unfinished training 📚</h1>
+    <p>Hi ${userName || 'there'},</p>
+    <p>Just a reminder — you have ${modules.length === 1 ? 'a training module' : `${modules.length} training modules`} in progress that ${modules.length === 1 ? "isn't" : "aren't"} done yet:</p>
+    ${rows}
+    <p>Pick up where you left off:</p>
+    <a class="btn" href="${appUrl}/dashboard">Continue Training</a>
+    <hr class="divider" />
+    <p style="font-size:13px; color:#94a3b8;">You received this because you have assigned training modules in progress.</p>
+  `)
+}
+
 export function nudgeEmail({
   userName,
   subjectEmoji,
@@ -87,6 +120,21 @@ export function nudgeEmail({
     <a class="btn" href="${appUrl}/dashboard">Go to Training</a>
     <hr class="divider" />
     <p style="font-size:13px; color:#94a3b8;">You received this because an admin assigned this module to you.</p>
+  `)
+}
+
+export function newMemberEmail({ userName, userEmail, appUrl }: { userName: string; userEmail: string; appUrl: string }) {
+  return base(`
+    <h1>New team member joined 🎉</h1>
+    <p>Someone just accepted their invite and signed up to TrainHub:</p>
+    <div class="card">
+      <div class="card-label">New Member</div>
+      <div class="card-value">${userName}</div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;">${userEmail}</div>
+    </div>
+    <a class="btn" href="${appUrl}/admin/users">View in Admin Panel</a>
+    <hr class="divider" />
+    <p style="font-size:13px;color:#94a3b8;">You received this because you are an admin on TrainHub.</p>
   `)
 }
 
