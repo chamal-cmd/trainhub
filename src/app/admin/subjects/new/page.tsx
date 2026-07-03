@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,21 @@ import Link from 'next/link'
 import { COVER_COLORS, COVER_EMOJIS } from '@/lib/utils'
 
 export default function NewSubjectPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <NewSubjectInner />
+    </Suspense>
+  )
+}
+
+function NewSubjectInner() {
   const router = useRouter()
+  const isClientTraining = useSearchParams().get('client') === '1'
+  const backHref = isClientTraining ? '/admin/clients' : '/admin/subjects'
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [color, setColor] = useState(COVER_COLORS[0])
@@ -32,7 +46,7 @@ export default function NewSubjectPage() {
 
     const { data, error: dbError } = await supabase
       .from('subjects')
-      .insert({ title: title.trim(), description: description.trim() || null, cover_color: color, emoji, created_by: user?.id })
+      .insert({ title: title.trim(), description: description.trim() || null, cover_color: color, emoji, created_by: user?.id, is_client_training: isClientTraining })
       .select('id')
       .single()
 
@@ -61,9 +75,9 @@ export default function NewSubjectPage() {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <Link href="/admin/subjects" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6">
         <ArrowLeft className="w-4 h-4" />
-        Back to Library
+        {isClientTraining ? 'Back to Client Training' : 'Back to Library'}
       </Link>
 
       <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Training Module</h1>
@@ -189,7 +203,7 @@ export default function NewSubjectPage() {
           <Button type="submit" loading={loading} disabled={!title.trim()}>
             Create Module
           </Button>
-          <Link href="/admin/subjects">
+          <Link href={backHref}>
             <Button type="button" variant="outline">Cancel</Button>
           </Link>
         </div>

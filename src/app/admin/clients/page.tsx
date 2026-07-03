@@ -1,70 +1,146 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+export const dynamic = 'force-dynamic'
+
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Building2, ChevronRight, Video, Loader2, BookOpen } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import {
+  Plus, BookOpen, FileText, ArrowRight, Trash2, HelpCircle,
+  Clock, Globe, Lock, Eye, GripVertical, ChevronUp, ChevronDown,
+  ArrowUpDown, Check, Building2,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-interface ClientModule {
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days  = Math.floor(diff / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 30)  return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}yr ago`
+}
+
+type SubjectRow = {
   id: string
   title: string
   description: string | null
-  emoji: string | null
-  cover_color: string | null
-  step_count: number
+  emoji: string
+  cover_color: string
+  created_at: string
+  updated_at: string
+  order_index: number
+  topics: { id: string; steps: { id: string }[] }[]
+  quizzes: { id: string }[]
+  assignments: { id: string }[]
 }
 
-export default function AdminClientTrainingPage() {
-  const router  = useRouter()
+export default function ClientTrainingPage() {
   const supabase = createClient()
-  const [modules,  setModules]  = useState<ClientModule[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [noColumn, setNoColumn] = useState(false)
+  const router = useRouter()
+  const [subjects, setSubjects]       = useState<SubjectRow[]>([])
+  const [totalUsers, setTotalUsers]   = useState(0)
+  const [loading, setLoading]         = useState(true)
+  const [noColumn, setNoColumn]       = useState(false)
+  const [deleting, setDeleting]       = useState<string | null>(null)
+  const [reorderMode, setReorderMode] = useState(false)
+  const [movingId, setMovingId]       = useState<string | null>(null)
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { loadSubjects() }, [])
 
-  async function load() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('subjects')
-      .select('id, title, description, emoji, cover_color, topics(id, steps(id))')
-      .eq('is_client_training', true)
-      .order('title')
-
-    if (error) {
+  async function loadSubjects() {
+    const [subjectsRes, usersRes] = await Promise.all([
+      supabase
+        .from('subjects')
+        .select(`id, title, description, emoji, cover_color, created_at, updated_at, order_index,
+                 topics(id, steps(id)), quizzes(id), assignments(id)`)
+        .eq('is_client_training', true)
+        .order('order_index', { ascending: true }),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    ])
+    if (subjectsRes.error) {
       // Column doesn't exist yet — migration not run
       setNoColumn(true)
       setLoading(false)
       return
     }
-
-    setModules((data ?? []).map((s: any) => ({
-      id:          s.id,
-      title:       s.title,
-      description: s.description,
-      emoji:       s.emoji,
-      cover_color: s.cover_color,
-      step_count:  (s.topics ?? []).flatMap((t: any) => t.steps ?? []).length,
-    })))
+    setSubjects(subjectsRes.data ?? [])
+    setTotalUsers(usersRes.count ?? 0)
     setLoading(false)
   }
 
+  async function moveSubject(id: string, direction: 'up' | 'down') {
+    const idx = subjects.findIndex(s => s.id === id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= subjects.length) return
+
+    setMovingId(id)
+    const a = subjects[idx]
+    const b = subjects[swapIdx]
+
+    // Swap order_index values
+    const newOrder = [...subjects]
+    newOrder[idx]  = { ...a, order_index: b.order_index }
+    newOrder[swapIdx] = { ...b, order_index: a.order_index }
+    newOrder.sort((x, y) => x.order_index - y.order_index)
+    setSubjects(newOrder)
+
+    await Promise.all([
+      supabase.from('subjects').update({ order_index: b.order_index }).eq('id', a.id),
+      supabase.from('subjects').update({ order_index: a.order_index }).eq('id', b.id),
+    ])
+    setMovingId(null)
+  }
+
+  async function deleteSubject(subject: SubjectRow) {
+    if (!confirm(`Delete "${subject.title}"? This will remove all topics, steps and content. This cannot be undone.`)) return
+    setDeleting(subject.id)
+    await supabase.from('subjects').delete().eq('id', subject.id)
+    setSubjects(prev => prev.filter(s => s.id !== subject.id))
+    setDeleting(null)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin w-6 h-6 border-2 border-violet-700 border-t-transparent rounded-full" />
+    </div>
+  )
+
+  const totalSubjects = subjects.length
+
   return (
-    <div className="px-8 py-7 min-h-full bg-[#f8f8f8]">
+    <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Client Training</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Modules imported from the GP Bookkeeper training sheet. Click any module to edit its steps and videos.
+          <h1 className="text-[22px] font-bold text-slate-900 tracking-tight">Client Training</h1>
+          <p className="text-slate-400 text-sm mt-0.5">
+            {totalSubjects === 0
+              ? 'Create your first client training module to get started.'
+              : `${totalSubjects} module${totalSubjects !== 1 ? 's' : ''} · ${reorderMode ? 'drag to reorder learning path' : 'click any card to edit content'}`}
           </p>
         </div>
-        <Link href="/admin/subjects">
-          <button className="flex items-center gap-2 px-4 h-9 rounded-xl bg-violet-700 text-white text-sm font-semibold hover:bg-violet-800 transition-colors">
-            <BookOpen className="w-4 h-4" /> All Subjects
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setReorderMode(r => !r)}
+            className={cn(
+              'flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors border',
+              reorderMode
+                ? 'bg-violet-700 text-white border-violet-700'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:text-violet-700'
+            )}
+          >
+            {reorderMode ? <><Check className="w-4 h-4" /> Done Reordering</> : <><ArrowUpDown className="w-4 h-4" /> Reorder</>}
           </button>
-        </Link>
+          <Link href="/admin/subjects/new?client=1">
+            <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+              <Plus className="w-4 h-4" /> New Module
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Migration banner */}
@@ -72,73 +148,215 @@ export default function AdminClientTrainingPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
           <p className="text-sm font-bold text-amber-900 mb-1">⚠️ Migration required</p>
           <p className="text-xs text-amber-800 mb-3">
-            Run this SQL in <strong>Supabase → SQL Editor</strong> first, then run the import script:
+            Run this SQL in <strong>Supabase → SQL Editor</strong> first:
           </p>
-          <pre className="bg-amber-100 text-amber-900 text-xs rounded-lg p-3 overflow-x-auto mb-3 font-mono">
+          <pre className="bg-amber-100 text-amber-900 text-xs rounded-lg p-3 overflow-x-auto font-mono">
             {`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_client_training BOOLEAN NOT NULL DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_subjects_client_training ON subjects (is_client_training) WHERE is_client_training = TRUE;`}
           </pre>
-          <p className="text-xs text-amber-800">
-            Then seed modules by running:
-          </p>
-          <pre className="bg-amber-100 text-amber-900 text-xs rounded-lg p-3 mt-1.5 font-mono">
-            {`node scripts/import-client-training.js "C:\\Users\\ChamalAb\\Downloads\\GP Bookkeeper Training (1).xlsx"`}
-          </pre>
         </div>
       )}
 
+      {!noColumn && subjects.length > 0 ? (
+        reorderMode ? (
+          /* ── Reorder mode: clean list with up/down arrows ─────────────────── */
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+            {subjects.map((subject, i) => {
+              const isFirst = i === 0
+              const isLast  = i === subjects.length - 1
+              const isMoving = movingId === subject.id
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-16">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-        </div>
-      )}
+              return (
+                <div
+                  key={subject.id}
+                  className={cn(
+                    'flex items-center gap-4 px-5 py-3.5 transition-colors',
+                    isMoving ? 'bg-violet-50' : 'hover:bg-slate-50'
+                  )}
+                >
+                  {/* Grip icon */}
+                  <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
 
-      {/* Empty */}
-      {!loading && !noColumn && modules.length === 0 && (
-        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center py-24">
-          <Building2 className="w-9 h-9 text-slate-300 mb-3" />
-          <p className="text-sm font-semibold text-slate-500">No client modules imported yet</p>
-          <p className="text-xs text-slate-400 mt-1">Run the import script above to seed modules from the Excel file.</p>
-        </div>
-      )}
-
-      {/* Grid */}
-      {!loading && !noColumn && modules.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {modules.map(m => (
-            <div
-              key={m.id}
-              onClick={() => router.push(`/admin/subjects/${m.id}`)}
-              className="group bg-white rounded-2xl border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer flex flex-col"
-            >
-              <div className="h-1.5 w-full" style={{ backgroundColor: m.cover_color ?? '#6366f1' }} />
-              <div className="p-4 flex flex-col flex-1">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                    style={{ backgroundColor: (m.cover_color ?? '#6366f1') + '20' }}
-                  >
-                    {m.emoji ?? '🏥'}
+                  {/* Position badge */}
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-slate-400">{i + 1}</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-violet-500 transition-colors mt-1.5" />
-                </div>
 
-                <h3 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-violet-900 flex-1">
-                  {m.title}
-                </h3>
-                {m.description && (
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{m.description}</p>
-                )}
+                  {/* Emoji */}
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                    style={{ backgroundColor: subject.cover_color + '1A' }}
+                  >
+                    {subject.emoji}
+                  </div>
 
-                <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
-                  <Video className="w-3 h-3 text-slate-400" />
-                  <span className="text-[11px] text-slate-400">{m.step_count} step{m.step_count !== 1 ? 's' : ''}</span>
+                  {/* Title */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{subject.title}</p>
+                    <p className="text-xs text-slate-400">
+                      {subject.topics?.length ?? 0} topics · {subject.topics?.reduce((a, t) => a + (t.steps?.length ?? 0), 0) ?? 0} steps
+                    </p>
+                  </div>
+
+                  {/* Color strip */}
+                  <div className="w-3 h-7 rounded-full shrink-0" style={{ backgroundColor: subject.cover_color }} />
+
+                  {/* Up/Down arrows */}
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button
+                      onClick={() => moveSubject(subject.id, 'up')}
+                      disabled={isFirst || isMoving}
+                      className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Move up"
+                    >
+                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                    </button>
+                    <button
+                      onClick={() => moveSubject(subject.id, 'down')}
+                      disabled={isLast || isMoving}
+                      className="p-1 rounded-md hover:bg-slate-100 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Move down"
+                    >
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </button>
+                  </div>
                 </div>
+              )
+            })}
+          </div>
+        ) : (
+          /* ── Normal mode: card grid ───────────────────────────────────────── */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {subjects.map((subject, i) => {
+              const topicsCount = subject.topics?.length ?? 0
+              const stepsCount  = subject.topics?.reduce((acc, t) => acc + (t.steps?.length ?? 0), 0) ?? 0
+              const hasQuiz     = subject.quizzes?.length > 0
+              const accessCount = subject.assignments?.length ?? 0
+              const isEveryone  = totalUsers > 0 && accessCount >= totalUsers
+              const isDeleting  = deleting === subject.id
+
+              return (
+                <div
+                  key={subject.id}
+                  onClick={() => router.push(`/admin/subjects/${subject.id}`)}
+                  className={cn(
+                    'bg-white rounded-2xl border border-slate-100 hover:border-violet-300 hover:shadow-lg transition-all group overflow-hidden animate-fade-up relative cursor-pointer',
+                    isDeleting && 'opacity-50 pointer-events-none'
+                  )}
+                  style={{ animationDelay: `${i * 0.04}s` }}
+                >
+                  {/* Color strip */}
+                  <div className="h-1 w-full" style={{ backgroundColor: subject.cover_color }} />
+
+                  <div className="p-5">
+                    {/* Position badge + icon + title */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="relative shrink-0">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-105"
+                          style={{ backgroundColor: subject.cover_color + '1A', boxShadow: `0 0 0 1px ${subject.cover_color}20` }}
+                        >
+                          {subject.emoji || '🏥'}
+                        </div>
+                        {subject.order_index < 900 && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-100 border border-white flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-slate-500">{i + 1}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors leading-snug line-clamp-1">
+                          {subject.title}
+                        </h3>
+                        {subject.description ? (
+                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">{subject.description}</p>
+                        ) : (
+                          <p className="text-xs text-slate-300 mt-0.5 italic">No description</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stats + actions */}
+                    <div className="flex items-center gap-1 pt-4 border-t border-slate-50 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                        <BookOpen className="w-3 h-3" />
+                        {topicsCount} topic{topicsCount !== 1 ? 's' : ''}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                        <FileText className="w-3 h-3" />
+                        {stepsCount} step{stepsCount !== 1 ? 's' : ''}
+                      </div>
+                      {hasQuiz && (
+                        <div className="flex items-center gap-1.5 text-xs text-violet-700 bg-violet-50 rounded-lg px-2.5 py-1.5">
+                          <HelpCircle className="w-3 h-3" /> Quiz
+                        </div>
+                      )}
+                      {isEveryone ? (
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5">
+                          <Globe className="w-3 h-3" /> Everyone
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                          <Lock className="w-3 h-3" /> {accessCount}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-[11px] text-slate-300 ml-1">
+                        <Clock className="w-3 h-3" />
+                        {timeAgo(subject.updated_at || subject.created_at)}
+                      </div>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <Link href={`/training/${subject.id}`} target="_blank" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 text-xs text-slate-600 font-semibold bg-slate-100 hover:bg-violet-100 hover:text-violet-700 px-2.5 py-1.5 rounded-lg transition-colors">
+                            <Eye className="w-3 h-3" /> Preview
+                          </div>
+                        </Link>
+                        <button
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); deleteSubject(subject) }}
+                          disabled={isDeleting}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-40"
+                          title="Delete module"
+                        >
+                          {isDeleting
+                            ? <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                        <Link href={`/admin/subjects/${subject.id}`} onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 text-xs text-violet-700 font-semibold bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+                            Edit <ArrowRight className="w-3 h-3" />
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Add new card */}
+            <Link href="/admin/subjects/new?client=1">
+              <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/30 transition-all cursor-pointer group flex flex-col items-center justify-center py-12 px-6 min-h-[160px]">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-violet-100 flex items-center justify-center mb-3 transition-colors">
+                  <Plus className="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition-colors" />
+                </div>
+                <p className="text-sm font-semibold text-slate-400 group-hover:text-violet-700 transition-colors">New Module</p>
               </div>
-            </div>
-          ))}
+            </Link>
+          </div>
+        )
+      ) : !noColumn && (
+        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+          <div className="w-20 h-20 bg-violet-50 rounded-3xl flex items-center justify-center mb-5">
+            <Building2 className="w-9 h-9 text-violet-400" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-700 mb-2">No client training modules yet</h3>
+          <p className="text-slate-400 text-sm mb-7 text-center max-w-xs">
+            Start by creating a client training module. Add topics, steps, and a quiz.
+          </p>
+          <Link href="/admin/subjects/new?client=1">
+            <button className="flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-colors shadow-sm">
+              <Plus className="w-4 h-4" /> Create First Module
+            </button>
+          </Link>
         </div>
       )}
     </div>
