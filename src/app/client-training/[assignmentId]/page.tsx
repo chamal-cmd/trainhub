@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { resolveEmbedUrl } from '@/lib/resolveEmbedUrl'
+import { RichTextEditor } from '@/components/shared/RichTextEditor'
 import {
   ArrowLeft, ArrowRight, Building2, CheckCircle2,
-  Menu, X, Video, Trash2, AlertTriangle, Loader2, Check,
+  Menu, X, Video, Trash2, AlertTriangle, Loader2, Check, ShieldCheck,
 } from 'lucide-react'
 
 type Params = { params: Promise<{ assignmentId: string }> }
@@ -24,6 +25,15 @@ interface SubtaskProgress {
 
 const DEFAULT_SUB: SubtaskProgress = { training_date: null, hands_on_date: null, status: 'not_started', remarks: '' }
 
+function nodeHasText(n: any): boolean {
+  if (typeof n?.text === 'string' && n.text.trim()) return true
+  if (Array.isArray(n?.content)) return n.content.some(nodeHasText)
+  return false
+}
+function hasContent(sub: any): boolean {
+  return !!sub.video_url || nodeHasText(sub.content)
+}
+
 const STATUS_OPTS = [
   { value: 'not_started' as const, label: 'Not started',  cls: 'text-slate-600 bg-slate-100' },
   { value: 'in_progress' as const, label: 'In progress',  cls: 'text-amber-700 bg-amber-100'  },
@@ -32,8 +42,9 @@ const STATUS_OPTS = [
 
 export default function ClientTrackerPage({ params }: Params) {
   const { assignmentId } = use(params)
-  const searchParams = useSearchParams()
-  const backHref     = searchParams.get('back') ?? '/client-training'
+  const searchParams   = useSearchParams()
+  const backHref       = searchParams.get('back') ?? '/client-training'
+  const isAdminPreview = searchParams.get('admin') === '1'
   const router       = useRouter()
   const supabase     = createClient()
 
@@ -72,7 +83,7 @@ export default function ClientTrackerPage({ params }: Params) {
 
     const [tRes, spRes] = await Promise.all([
       supabase.from('client_tasks')
-        .select('id, title, order_index, client_subtasks(id, title, video_url, order_index)')
+        .select('id, title, order_index, client_subtasks(id, title, video_url, content, order_index)')
         .eq('client_id', cid).order('order_index'),
       supabase.from('client_subtask_progress')
         .select('subtask_id, training_date, hands_on_date, status, remarks')
@@ -123,21 +134,21 @@ export default function ClientTrackerPage({ params }: Params) {
     router.push('/client-training')
   }
 
-  // Flatten all video subtasks into a sequential list
-  const allVideoSubs: { sub: any; task: any }[] = tasks
-    .filter(t => (t.client_subtasks ?? []).some((s: any) => s.video_url))
+  // Flatten all subtasks with a video or written content into a sequential list
+  const allSubs: { sub: any; task: any }[] = tasks
+    .filter(t => (t.client_subtasks ?? []).some(hasContent))
     .flatMap(t =>
       (t.client_subtasks ?? [])
-        .filter((s: any) => s.video_url)
+        .filter(hasContent)
         .map((s: any) => ({ sub: s, task: t }))
     )
 
-  const totalSubs  = allVideoSubs.length
-  const doneSubs   = allVideoSubs.filter(e => subProg[e.sub.id]?.status === 'completed').length
+  const totalSubs  = allSubs.length
+  const doneSubs   = allSubs.filter(e => subProg[e.sub.id]?.status === 'completed').length
   const pct        = totalSubs > 0 ? Math.round(doneSubs / totalSubs * 100) : 0
 
   const safeIdx  = Math.min(currentIdx, Math.max(0, totalSubs - 1))
-  const current  = allVideoSubs[safeIdx] ?? null
+  const current  = allSubs[safeIdx] ?? null
   const embedUrl = current?.sub.video_url ? resolveEmbedUrl(current.sub.video_url) : null
   const prog     = current ? (subProg[current.sub.id] ?? DEFAULT_SUB) : DEFAULT_SUB
   const sOpt     = STATUS_OPTS.find(o => o.value === prog.status) ?? STATUS_OPTS[0]
@@ -199,16 +210,16 @@ export default function ClientTrackerPage({ params }: Params) {
           {/* Step list */}
           <div className="flex-1 overflow-y-auto py-2">
             {tasks
-              .filter(t => (t.client_subtasks ?? []).some((s: any) => s.video_url))
+              .filter(t => (t.client_subtasks ?? []).some(hasContent))
               .map(task => (
                 <div key={task.id}>
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     {task.title}
                   </p>
                   {(task.client_subtasks ?? [])
-                    .filter((s: any) => s.video_url)
+                    .filter(hasContent)
                     .map((sub: any) => {
-                      const idx    = allVideoSubs.findIndex(e => e.sub.id === sub.id)
+                      const idx    = allSubs.findIndex(e => e.sub.id === sub.id)
                       const done   = subProg[sub.id]?.status === 'completed'
                       const active = idx === safeIdx
                       return (
@@ -256,6 +267,14 @@ export default function ClientTrackerPage({ params }: Params) {
 
         {/* ── Main Content ─────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+          {/* Admin preview banner */}
+          {isAdminPreview && (
+            <div className="flex items-center gap-2.5 bg-violet-700 text-white text-xs font-semibold px-4 py-2 shrink-0">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              Admin preview — showing this trainee's real progress
+            </div>
+          )}
 
           {/* Top bar */}
           <div className="flex items-center gap-3 px-6 h-14 border-b border-slate-100 bg-white shrink-0">
@@ -312,12 +331,19 @@ export default function ClientTrackerPage({ params }: Params) {
                       />
                     </div>
                   </div>
-                ) : (
+                ) : !nodeHasText(current.sub.content) ? (
                   <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 mb-6 flex items-center justify-center py-16">
                     <div className="text-center">
                       <Video className="w-8 h-8 text-slate-200 mx-auto mb-2" />
                       <p className="text-sm text-slate-400">No video available</p>
                     </div>
+                  </div>
+                ) : null}
+
+                {/* Written content */}
+                {nodeHasText(current.sub.content) && (
+                  <div className="rounded-2xl border border-slate-200 shadow-sm bg-white p-6 mb-6">
+                    <RichTextEditor key={current.sub.id} content={current.sub.content} readOnly />
                   </div>
                 )}
 

@@ -11,12 +11,13 @@ import {
   X, Loader2, Play, Video, MessageSquare, Send, Lock, Globe, Pencil,
 } from 'lucide-react'
 import { resolveEmbedUrl } from '@/lib/resolveEmbedUrl'
+import { RichTextEditor } from '@/components/shared/RichTextEditor'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Subtask = {
   id: string; client_task_id: string; title: string
-  video_url: string | null; order_index: number
+  video_url: string | null; content: object | null; order_index: number
 }
 
 type Task = {
@@ -173,7 +174,7 @@ function ClientDetailInner({ params }: Params) {
 
     const [clientRes, taskRes, toolRes, assignRes, profileRes] = await Promise.all([
       supabase.from('clients').select('id, name, xero_file, description, pod, bookkeeper, trainer_id').eq('id', clientId).single(),
-      supabase.from('client_tasks').select('id, client_id, title, order_index, client_subtasks(id, client_task_id, title, video_url, order_index)').eq('client_id', clientId).order('order_index'),
+      supabase.from('client_tasks').select('id, client_id, title, order_index, client_subtasks(id, client_task_id, title, video_url, content, order_index)').eq('client_id', clientId).order('order_index'),
       supabase.from('client_access_tools').select('id, client_id, tool_name, order_index').eq('client_id', clientId).order('order_index'),
       supabase.from('client_training_assignments').select(`id, client_id, trainee_id, trainer_id, trainee:profiles!client_training_assignments_trainee_id_fkey(full_name, email), trainer:profiles!client_training_assignments_trainer_id_fkey(full_name)`).eq('client_id', clientId),
       supabase.from('profiles').select('id, full_name, email').order('full_name'),
@@ -274,7 +275,7 @@ function ClientDetailInner({ params }: Params) {
     if (!newSubtaskTitle.trim()) return
     const task = tasks.find(t => t.id === taskId)
     const maxOrder = task && task.subtasks.length > 0 ? Math.max(...task.subtasks.map(s => s.order_index)) + 1 : 0
-    const { data } = await supabase.from('client_subtasks').insert({ client_task_id: taskId, title: newSubtaskTitle.trim(), video_url: null, order_index: maxOrder }).select('id, client_task_id, title, video_url, order_index').single()
+    const { data } = await supabase.from('client_subtasks').insert({ client_task_id: taskId, title: newSubtaskTitle.trim(), video_url: null, order_index: maxOrder }).select('id, client_task_id, title, video_url, content, order_index').single()
     if (data) setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: [...t.subtasks, data as Subtask] } : t))
     setNewSubtaskTitle(''); setAddingSubtaskForTask(null)
   }
@@ -283,6 +284,21 @@ function ClientDetailInner({ params }: Params) {
     await supabase.from('client_subtasks').delete().eq('id', subtaskId)
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.filter(s => s.id !== subtaskId) } : t))
     if (selectedSubId === subtaskId) { setSelectedSubId(null); setActivePanel('overview') }
+  }
+
+  // ── Subtask content auto-save ────────────────────────────────────────────
+  const contentSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [contentSaved, setContentSaved] = useState(false)
+
+  function handleSubtaskContentChange(subtaskId: string, taskId: string, content: object) {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, content } : s) } : t))
+    setContentSaved(false)
+    if (contentSaveTimer.current) clearTimeout(contentSaveTimer.current)
+    contentSaveTimer.current = setTimeout(async () => {
+      await supabase.from('client_subtasks').update({ content }).eq('id', subtaskId)
+      setContentSaved(true)
+      setTimeout(() => setContentSaved(false), 2000)
+    }, 800)
   }
 
   // ── Access tools ──────────────────────────────────────────────────────────
@@ -378,7 +394,7 @@ function ClientDetailInner({ params }: Params) {
     if (!selectedKBSubject || importing) return
     setImporting(true)
     try {
-      const { data: subj } = await supabase.from('subjects').select('title, topics(id, title, order_index, steps(id, title, order_index))').eq('id', selectedKBSubject).single()
+      const { data: subj } = await supabase.from('subjects').select('title, topics(id, title, order_index, steps(id, title, content, order_index))').eq('id', selectedKBSubject).single()
       if (!subj) return
       if (importMode === 'replace') { await supabase.from('client_tasks').delete().eq('client_id', clientId); setTasks([]) }
       const maxOrder = importMode === 'add' && tasks.length > 0 ? Math.max(...tasks.map(t => t.order_index)) + 1 : 0
@@ -392,7 +408,7 @@ function ClientDetailInner({ params }: Params) {
         const subtasks: Subtask[] = []
         for (let j = 0; j < sortedSteps.length; j++) {
           const step = sortedSteps[j]
-          const { data: newSub } = await supabase.from('client_subtasks').insert({ client_task_id: newTask.id, title: step.title, order_index: j, video_url: null }).select('id, client_task_id, title, video_url, order_index').single()
+          const { data: newSub } = await supabase.from('client_subtasks').insert({ client_task_id: newTask.id, title: step.title, order_index: j, video_url: null, content: step.content ?? null }).select('id, client_task_id, title, video_url, content, order_index').single()
           if (newSub) subtasks.push(newSub as Subtask)
         }
         newTasks.push({ ...(newTask as any), subtasks })
@@ -616,6 +632,14 @@ function ClientDetailInner({ params }: Params) {
               {pod && <p className="text-xs text-slate-400 mt-0.5">Pod: {pod}{bookkeeper ? ` · ${bookkeeper}` : ''}</p>}
             </div>
             <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => assignments[0] && window.open(`/client-training/${assignments[0].id}?admin=1`, '_blank')}
+                disabled={assignments.length === 0}
+                title={assignments.length === 0 ? 'Add an assignment first to preview' : 'Preview as the assigned trainee would see it'}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors disabled:opacity-40 disabled:hover:bg-slate-100 disabled:hover:text-slate-600"
+              >
+                <Eye className="w-3.5 h-3.5" /> Preview
+              </button>
               <button onClick={openImportModal} className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-slate-100 hover:bg-violet-50 text-slate-600 hover:text-violet-700 text-xs font-semibold transition-colors">
                 <Download className="w-3.5 h-3.5" /> From KB
               </button>
@@ -768,6 +792,22 @@ function ClientDetailInner({ params }: Params) {
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5 block">Video URL</label>
                 <input key={`url-${selEntry.sub.id}`} defaultValue={selEntry.sub.video_url ?? ''} onBlur={e => { const url = e.target.value.trim() || null; if (url !== (selEntry.sub.video_url ?? null)) { supabase.from('client_subtasks').update({ video_url: url }).eq('id', selEntry.sub.id).then(() => setTasks(prev => prev.map(t => t.id === selEntry.task.id ? { ...t, subtasks: t.subtasks.map(s => s.id === selEntry.sub.id ? { ...s, video_url: url } : s) } : t))) } }} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} placeholder="https://www.loom.com/share/…" className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white" />
               </div>
+
+              <div className="mb-5">
+                <div className={cn(
+                  'flex items-center gap-1.5 text-xs text-emerald-600 mb-2 transition-opacity duration-300',
+                  contentSaved ? 'opacity-100' : 'opacity-0'
+                )}>
+                  <Check className="w-3 h-3" /> Saved
+                </div>
+                <RichTextEditor
+                  key={selEntry.sub.id}
+                  content={selEntry.sub.content}
+                  onChange={content => handleSubtaskContentChange(selEntry.sub.id, selEntry.task.id, content)}
+                  placeholder="Write instructions or notes for this subtask…"
+                />
+              </div>
+
               <div className="flex items-center gap-3">
                 <button onClick={() => prevEntry && openSubtask(prevEntry.sub.id, prevEntry.task.id)} disabled={!prevEntry} className="flex items-center gap-1.5 px-4 h-9 rounded-xl bg-white border border-slate-200 shadow-sm text-sm font-semibold text-slate-600 hover:text-violet-700 hover:border-violet-300 transition-colors disabled:opacity-40">
                   <ArrowLeft className="w-3.5 h-3.5" /> Previous
