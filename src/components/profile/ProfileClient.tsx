@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import {
   BookOpen, Clock, Search, ChevronLeft, ChevronRight, ChevronDown,
-  Trophy, Medal,
+  Trophy, Medal, Brain, CheckCircle2, XCircle,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,16 +29,25 @@ export interface LeaderboardEntry {
   isCurrentUser: boolean
 }
 
+export interface QuizScoreEntry {
+  topicTitle: string
+  subjectTitle: string
+  score: number
+  passed: boolean
+  completedAt: string
+}
+
 interface Props {
   modules: ProfileModule[]
   leaderboard: LeaderboardEntry[]
+  quizScores: QuizScoreEntry[]
 }
 
 const PAGE_SIZE = 8
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function ProfileClient({ modules, leaderboard }: Props) {
+export function ProfileClient({ modules, leaderboard, quizScores }: Props) {
   const [page, setPage]                  = useState(1)
   const [sortValue, setSortValue]        = useState('Recently viewed')
   const [typeValue, setTypeValue]        = useState('All content')
@@ -207,6 +216,38 @@ export function ProfileClient({ modules, leaderboard }: Props) {
             </div>
           )}
         </div>
+
+        {/* ── Quiz scores section ── */}
+        {quizScores.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Brain className="w-4 h-4 text-violet-500" />
+              <h2 className="text-base font-bold text-slate-900">Quiz Scores</h2>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {quizScores.map((q, i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-700 truncate">{q.topicTitle}</p>
+                    {q.subjectTitle && (
+                      <span className="text-[11px] font-medium text-slate-500 bg-slate-100 rounded px-1.5 py-0.5 mt-0.5 inline-block">
+                        {q.subjectTitle}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`flex items-center gap-1.5 text-xs font-bold rounded-lg px-2.5 py-1 shrink-0 ${
+                    q.passed
+                      ? 'text-emerald-700 bg-emerald-50 border border-emerald-100'
+                      : 'text-amber-700 bg-amber-50 border border-amber-100'
+                  }`}>
+                    {q.passed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    {q.score}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Right: leaderboard panel (independent scroll) ── */}

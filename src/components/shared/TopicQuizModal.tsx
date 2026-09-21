@@ -46,6 +46,7 @@ export default function TopicQuizModal({
   const [answers,     setAnswers]     = useState<number[]>([])
   const [saving,      setSaving]      = useState(false)
   const [error,       setError]       = useState('')
+  const [isRetake,    setIsRetake]    = useState(false)
 
   useEffect(() => { loadQuiz() }, [])
 
@@ -112,7 +113,8 @@ export default function TopicQuizModal({
       const allAnswers = [...answers]
       const correctCount = allAnswers.filter((a, i) => a === quiz.questions[i].correct_index).length
       const score   = Math.round((correctCount / quiz.questions.length) * 100)
-      const passed  = score >= quiz.passing_score
+      // A repeated attempt always counts as complete, regardless of score
+      const passed  = isRetake ? true : score >= quiz.passing_score
 
       setSaving(true)
       try {
@@ -134,6 +136,7 @@ export default function TopicQuizModal({
     setSelectedIdx(null)
     setConfirmed(false)
     setAnswers([])
+    setIsRetake(true)
   }
 
   // ── Derived values ───────────────────────────────────────────────────────
@@ -145,7 +148,7 @@ export default function TopicQuizModal({
 
   const correctCount  = answers.filter((a, i) => quiz && a === quiz.questions[i].correct_index).length
   const score         = total > 0 ? Math.round((correctCount / total) * 100) : 0
-  const passed        = quiz ? score >= quiz.passing_score : false
+  const passed        = quiz ? (isRetake || score >= quiz.passing_score) : false
 
   // ── Backdrop ─────────────────────────────────────────────────────────────
   return (

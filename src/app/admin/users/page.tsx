@@ -10,7 +10,7 @@ import type { Profile } from '@/lib/types'
 import { getInitials, formatDate } from '@/lib/utils'
 import {
   Search, Users, Mail, Shield, User, Loader2, Trash2,
-  ShieldCheck, ShieldOff, UserPlus, Copy, Check,
+  ShieldCheck, ShieldOff, UserPlus, Copy, Check, RotateCcw,
 } from 'lucide-react'
 
 export default function UsersPage() {
@@ -21,6 +21,7 @@ export default function UsersPage() {
   const [currentUserId, setCurrentUserId] = useState('')
   const [removing,      setRemoving]      = useState<string | null>(null)
   const [settingRole,   setSettingRole]   = useState<string | null>(null)
+  const [resetting,     setResetting]     = useState<string | null>(null)
 
   // Invite modal
   const [showInvite,   setShowInvite]   = useState(false)
@@ -97,6 +98,21 @@ export default function UsersPage() {
     setRemoving(null)
   }
 
+  async function resetProgress(user: Profile) {
+    if (!confirm(`Reset all training progress for ${user.full_name}? This clears every completed step and quiz result. This cannot be undone.`)) return
+    setResetting(user.id)
+    const auth = await getAuthHeader()
+    const res = await fetch('/api/admin/reset-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...auth },
+      body: JSON.stringify({ userId: user.id }),
+    })
+    const json = await res.json()
+    setResetting(null)
+    if (!res.ok) { alert(json.error); return }
+    alert(`Progress reset for ${user.full_name}.`)
+  }
+
   function copyLink(url: string) {
     navigator.clipboard.writeText(url)
     setLinkCopied(true)
@@ -155,7 +171,7 @@ export default function UsersPage() {
               <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" /> Team Members ({regularUsers.length})
               </h2>
-              <UserList users={regularUsers} currentUserId={currentUserId} removing={removing} settingRole={settingRole} onRemove={removeUser} onSetRole={setRole} />
+              <UserList users={regularUsers} currentUserId={currentUserId} removing={removing} settingRole={settingRole} onRemove={removeUser} onSetRole={setRole} resetting={resetting} onResetProgress={resetProgress} />
             </div>
           )}
           {filtered.length === 0 && (
@@ -258,13 +274,15 @@ export default function UsersPage() {
   )
 }
 
-function UserList({ users, currentUserId, removing, settingRole, onRemove, onSetRole }: {
+function UserList({ users, currentUserId, removing, settingRole, onRemove, onSetRole, resetting, onResetProgress }: {
   users: Profile[]
   currentUserId: string
   removing: string | null
   settingRole: string | null
   onRemove: (user: Profile) => void
   onSetRole: (user: Profile, role: 'admin' | 'user') => void
+  resetting?: string | null
+  onResetProgress?: (user: Profile) => void
 }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -285,6 +303,16 @@ function UserList({ users, currentUserId, removing, settingRole, onRemove, onSet
           <span className="text-xs text-slate-400 hidden sm:block">{formatDate(user.created_at)}</span>
           {user.id !== currentUserId && (
             <div className="flex items-center gap-1 shrink-0">
+              {onResetProgress && (
+                <button
+                  onClick={() => onResetProgress(user)}
+                  disabled={resetting === user.id}
+                  title="Reset training progress"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-50"
+                >
+                  {resetting === user.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                </button>
+              )}
               <button
                 onClick={() => onSetRole(user, user.role === 'admin' ? 'user' : 'admin')}
                 disabled={settingRole === user.id}

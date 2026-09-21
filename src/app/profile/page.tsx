@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const supabase = await createClient()
 
   // Cached helpers deduplicate DB hits shared with layout/other pages in same request
-  const [profile, completedIds, completionRate, assignmentsRes, allProfilesRes, allProgressRes] = await Promise.all([
+  const [profile, completedIds, completionRate, assignmentsRes, allProfilesRes, allProgressRes, quizCompletionsRes] = await Promise.all([
     getProfile(user.id),
     getCompletedStepIds(user.id),
     getCompletionRate(user.id),
@@ -23,11 +23,24 @@ export default async function ProfilePage() {
       .eq('user_id', user.id),
     supabase.from('profiles').select('id, full_name'),
     supabase.from('step_progress').select('user_id'),
+    supabase
+      .from('topic_quiz_completions')
+      .select('score, passed, completed_at, topics(title, subjects(title))')
+      .eq('user_id', user.id)
+      .order('completed_at', { ascending: false }),
   ])
 
   const assignments = assignmentsRes.data  ?? []
   const allProfiles = allProfilesRes.data  ?? []
   const allProgress = allProgressRes.data  ?? []
+
+  const quizScores = (quizCompletionsRes.data ?? []).map((c: any) => ({
+    topicTitle:   c.topics?.title ?? 'Untitled topic',
+    subjectTitle: c.topics?.subjects?.title ?? '',
+    score:        c.score,
+    passed:       c.passed,
+    completedAt:  c.completed_at,
+  }))
 
   // ── Build module list ──────────────────────────────────────────────────────
   const modules = assignments.map((a: any) => {
@@ -72,7 +85,7 @@ export default async function ProfilePage() {
 
   return (
     <UserClientWrapper userName={userName} userRole={userRole} completionRate={completionRate}>
-      <ProfileClient modules={modules} leaderboard={leaderboard} />
+      <ProfileClient modules={modules} leaderboard={leaderboard} quizScores={quizScores} />
     </UserClientWrapper>
   )
 }

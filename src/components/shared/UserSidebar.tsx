@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, BookOpen, Building2, Wrench,
-  TrendingUp, Award, LogOut, GraduationCap, FolderOpen,
+  TrendingUp, LogOut, GraduationCap, FolderOpen,
 } from 'lucide-react'
 
 const learnItems = [
@@ -19,7 +19,6 @@ const learnItems = [
 
 const accountItems = [
   { href: '/profile', label: 'My Progress',  icon: TrendingUp },
-  { href: '/profile', label: 'Certificates', icon: Award, soon: true },
 ]
 
 export function UserSidebar({ userName }: { userName?: string }) {
