@@ -44,6 +44,23 @@ function ProgressBar({ value, status }: { value: number; status: string }) {
   )
 }
 
+// Supabase caps a single select() response at 1000 rows by default — fetch in
+// pages so tables past that size (e.g. step_progress) aren't silently truncated.
+async function fetchAllRows<T>(makeQuery: () => any): Promise<T[]> {
+  const pageSize = 1000
+  let rows: T[] = []
+  let from = 0
+  while (true) {
+    const { data, error } = await makeQuery().range(from, from + pageSize - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    rows = rows.concat(data)
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+  return rows
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ReportsPage() {
@@ -52,7 +69,7 @@ export default async function ReportsPage() {
   const [
     { data: users },
     { data: assignments },
-    { data: stepProgress },
+    stepProgress,
     { data: clients },
     { data: clientAssignments },
     { data: subtaskProgress },
@@ -62,7 +79,9 @@ export default async function ReportsPage() {
       user_id, subject_id,
       subjects(id, title, emoji, topics(steps(id)))
     `),
-    supabase.from('step_progress').select('user_id, step_id, created_at'),
+    fetchAllRows<{ user_id: string; step_id: string; created_at: string }>(
+      () => supabase.from('step_progress').select('user_id, step_id, created_at')
+    ),
     supabase.from('clients')
       .select('id, name, client_tasks(id, client_subtasks(id, video_url))')
       .order('name'),
