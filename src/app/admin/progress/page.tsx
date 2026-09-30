@@ -35,7 +35,7 @@ export default async function ProgressPage() {
     sbFetch('subjects?select=id,title,emoji,cover_color'),
     sbFetch('topics?select=id,subject_id'),
     sbFetch('steps?select=id,topic_id'),
-    sbFetch('step_progress?select=user_id,step_id,created_at'),
+    sbFetch('step_progress?select=user_id,step_id,completed_at'),
     sbFetch('quiz_attempts?select=user_id,passed,score,completed_at'),
   ])
 
@@ -59,8 +59,8 @@ export default async function ProgressPage() {
   for (const p of rawProgress) {
     if (!userCompletedSteps[p.user_id]) userCompletedSteps[p.user_id] = new Set()
     userCompletedSteps[p.user_id].add(p.step_id)
-    if (!userLastActive[p.user_id] || p.created_at > userLastActive[p.user_id]) {
-      userLastActive[p.user_id] = p.created_at
+    if (!userLastActive[p.user_id] || p.completed_at > userLastActive[p.user_id]) {
+      userLastActive[p.user_id] = p.completed_at
     }
   }
 

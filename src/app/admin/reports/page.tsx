@@ -79,8 +79,8 @@ export default async function ReportsPage() {
       user_id, subject_id,
       subjects(id, title, emoji, topics(steps(id)))
     `),
-    fetchAllRows<{ user_id: string; step_id: string; created_at: string }>(
-      () => supabase.from('step_progress').select('user_id, step_id, created_at')
+    fetchAllRows<{ user_id: string; step_id: string; completed_at: string }>(
+      () => supabase.from('step_progress').select('user_id, step_id, completed_at')
     ),
     supabase.from('clients')
       .select('id, name, client_tasks(id, client_subtasks(id, video_url))')
@@ -177,11 +177,11 @@ export default async function ReportsPage() {
 
   // ── CSV download data ─────────────────────────────────────────────────────
 
-  // last active per user (most recent step_progress.created_at)
+  // last active per user (most recent step_progress.completed_at)
   const lastActiveByUser: Record<string, string> = {}
   for (const p of (stepProgress ?? [])) {
-    if (!lastActiveByUser[p.user_id] || (p as any).created_at > lastActiveByUser[p.user_id])
-      lastActiveByUser[p.user_id] = (p as any).created_at
+    if (!lastActiveByUser[p.user_id] || (p as any).completed_at > lastActiveByUser[p.user_id])
+      lastActiveByUser[p.user_id] = (p as any).completed_at
   }
 
   const quizTitleMap: Record<string, string> = Object.fromEntries((quizTitles ?? []).map((q: any) => [q.id, q.title]))
