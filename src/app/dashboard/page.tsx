@@ -22,7 +22,7 @@ export default async function UserDashboard() {
   const [subjectsRes, progressRes, topicQuizRes, profile, nudgesRes] = await Promise.all([
     supabase
       .from('subjects')
-      .select('id, title, emoji, cover_color, topics(id, ai_quiz, steps(id))')
+      .select('id, title, emoji, cover_color, order_index, is_client_training, topics(id, ai_quiz, steps(id))')
       .order('order_index'),
     supabase
       .from('step_progress')
@@ -41,7 +41,17 @@ export default async function UserDashboard() {
       .order('created_at', { ascending: false }),
   ])
 
-  const subjects           = subjectsRes.data ?? []
+  // "Overall progress" is meant to track the core learning path only — not
+  // every client's SOPs/training-tasks subjects, which were inflating every
+  // user's denominator regardless of which (if any) client they work on and
+  // making the dashboard's own progress ring disagree badly with admin reports
+  // (e.g. a learner who finished all 31 core modules showing ~39% instead of
+  // 100%, because the calc divided by steps across all ~77 subjects instead
+  // of their actual assigned ~31). Client training has its own dedicated
+  // /client-training page, so excluding it here loses nothing.
+  const subjects           = (subjectsRes.data ?? []).filter(
+    (s: any) => !s.is_client_training && s.order_index < 1000 && s.title !== 'General SOPs'
+  )
   const stepProgress       = progressRes.data ?? []
   const completedIds       = new Set(stepProgress.map((p: any) => p.step_id))
   const passedTopicQuizIds = new Set((topicQuizRes.data ?? []).filter((r: any) => r.passed).map((r: any) => r.topic_id))
