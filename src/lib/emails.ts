@@ -52,7 +52,7 @@ export function inviteEmail({
     <p>Click the button below to set up your account and get started:</p>
     <a class="btn" href="${inviteUrl}">Accept Invitation</a>
     <hr class="divider" />
-    <p style="font-size:13px; color:#94a3b8;">This invite link expires in 24 hours. If you weren't expecting this, you can safely ignore it.</p>
+    <p style="font-size:13px; color:#94a3b8;">This invite link doesn't expire, so use it whenever you're ready. If you weren't expecting this, you can safely ignore it.</p>
   `)
 }
 

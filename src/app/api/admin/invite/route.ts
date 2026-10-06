@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { resend, FROM } from '@/lib/resend'
 import { inviteEmail, welcomeEmail } from '@/lib/emails'
+import { newInviteCode } from '@/lib/invite'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -74,14 +75,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: linkError?.message ?? 'Failed to generate link' }, { status: 400 })
     }
 
-    const userId: string      = (linkData as any).user?.id
-    const hashedToken: string = (linkData as any)?.properties?.hashed_token
+    const userId: string = (linkData as any).user?.id
+    if (!userId) return NextResponse.json({ error: 'Could not determine user id' }, { status: 500 })
 
-    if (!userId)      return NextResponse.json({ error: 'Could not determine user id' }, { status: 500 })
-    if (!hashedToken) return NextResponse.json({ error: 'Could not generate invite token' }, { status: 500 })
-
-    // Manually build the verify URL so type=invite is always present
-    const inviteUrl = `${SB_URL}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=invite&redirect_to=${encodeURIComponent(`${origin}/auth/accept`)}`
+    // The link we share is a short, permanent code (/i/<code>). The Supabase
+    // token generated above expires in 24h, so it is not shared — a fresh one
+    // is minted each time the short link is opened. Re-inviting the same
+    // person keeps their existing code, so an earlier link keeps working.
+    const { data: existing } = await supabase.auth.admin.getUserById(userId)
+    const inviteCode: string = (existing?.user?.app_metadata as any)?.invite_code ?? newInviteCode()
+    const inviteUrl = `${origin}/i/${inviteCode}`
 
     // Upsert profile so the user is recognised on first sign-in
     await fetch(`${SB_URL}/rest/v1/profiles`, {
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
     await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, {
       method: 'PUT',
       headers: { 'apikey': SVC, 'Authorization': `Bearer ${SVC}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_metadata: { onboarding_pending: true } }),
+      body: JSON.stringify({ app_metadata: { onboarding_pending: true, invite_code: inviteCode } }),
     })
 
     // Send invite email via Resend

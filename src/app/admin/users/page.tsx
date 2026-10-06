@@ -261,7 +261,7 @@ export default function UsersPage() {
                 {linkCopied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 mb-5">Expires in 24 hours</p>
+            <p className="text-[11px] text-slate-400 mb-5">Never expires — works until they accept</p>
 
             <button onClick={() => setInviteLink(null)}
               className="w-full h-10 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-sm font-semibold">
