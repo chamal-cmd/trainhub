@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff, AlertCircle, Zap, GraduationCap } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, GraduationCap } from 'lucide-react'
 
 function GoogleLogo() {
   return (
@@ -89,33 +89,12 @@ function LoginPageInner() {
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-500 uppercase tracking-widest bg-violet-600/10 border border-violet-600/20 px-3 py-1.5 rounded-full mb-6 w-fit">
-              <Zap className="w-3 h-3" /> Training Platform
-            </span>
-            <h1 className="text-[42px] font-extrabold text-white leading-[1.1] tracking-tight mb-5">
-              Build a team that<br />
+            <h1 className="text-[42px] font-extrabold text-white leading-[1.15] tracking-tight">
+              GP Bookkeeper<br />
               <span className="bg-gradient-to-r from-violet-500 to-violet-400 bg-clip-text text-transparent">
-                actually knows
-              </span><br />
-              their job.
+                Training Portal
+              </span>
             </h1>
-            <p className="text-slate-400 text-base leading-relaxed max-w-sm mb-10">
-              Training modules, quizzes, and progress tracking — built for the GP Bookkeeper team.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['Rich content editor', 'Video embeds', 'Progress tracking', 'Quiz builder', 'Role-based access', 'Pod teams'].map(f => (
-                <span key={f} className="text-xs text-violet-400 bg-violet-600/10 border border-violet-600/20 px-3 py-1.5 rounded-full font-medium">{f}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-6 pt-8 border-t border-white/10 mt-10">
-            {[{ n: '3', l: 'Pods' }, { n: '28+', l: 'Team members' }, { n: '13+', l: 'Modules' }].map(s => (
-              <div key={s.l}>
-                <p className="text-2xl font-bold text-white">{s.n}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{s.l}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
